@@ -1,0 +1,379 @@
+{
+  "_fixture": "SAMPLE DATA: hand-written fixture in the documented Qloo response shape. Not a live Qloo response.",
+  "success": true,
+  "results": {
+    "entities": [
+      {
+        "name": "Theo Parrish",
+        "entity_id": "484C5E31-CF37-A753-CB7A-BE045DA15737",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.71,
+        "properties": {
+          "short_description": "Detroit house producer and DJ"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:deep_house",
+            "name": "Deep House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:detroit_techno",
+            "name": "Detroit Techno",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:soul",
+            "name": "Soul",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:disco",
+            "name": "Disco",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.93
+        }
+      },
+      {
+        "name": "Four Tet",
+        "entity_id": "72AD8107-392C-D083-DB82-64924D02938B",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.88,
+        "properties": {
+          "short_description": "English electronic musician"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:ambient",
+            "name": "Ambient",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:experimental",
+            "name": "Experimental",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.91
+        }
+      },
+      {
+        "name": "Kerri Chandler",
+        "entity_id": "7CF98D8D-D035-8BF0-212E-CBCE723CCFD3",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.74,
+        "properties": {
+          "short_description": "American deep house producer and DJ"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:deep_house",
+            "name": "Deep House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:soul",
+            "name": "Soul",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.89
+        }
+      },
+      {
+        "name": "Caribou",
+        "entity_id": "40E8EEA6-FEA1-7C61-C10F-4352C5759803",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.86,
+        "properties": {
+          "short_description": "Canadian electronic musician"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:experimental",
+            "name": "Experimental",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:psychedelic",
+            "name": "Psychedelic",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.87
+        }
+      },
+      {
+        "name": "Kyle Hall",
+        "entity_id": "C477F2D5-8BC5-4D97-EC98-0E611A97DAA2",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.45,
+        "properties": {
+          "short_description": "Detroit house and techno producer"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:detroit_techno",
+            "name": "Detroit Techno",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:deep_house",
+            "name": "Deep House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:broken_beat",
+            "name": "Broken Beat",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.85
+        }
+      },
+      {
+        "name": "Kaytranada",
+        "entity_id": "99D683E2-5B82-D626-F232-14EDC030E4E8",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.9,
+        "properties": {
+          "short_description": "Haitian-Canadian producer and DJ"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:randb",
+            "name": "R&B",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.84
+        }
+      },
+      {
+        "name": "Octo Octa",
+        "entity_id": "BE8051B1-4995-F847-8267-EE24BD123042",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.58,
+        "properties": {
+          "short_description": "American house producer and DJ"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:breakbeat",
+            "name": "Breakbeat",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.83
+        }
+      },
+      {
+        "name": "Ross From Friends",
+        "entity_id": "45EE2C61-B081-3797-12AD-1D2C28124C20",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.62,
+        "properties": {
+          "short_description": "English electronic producer"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:lo_fi_house",
+            "name": "Lo-fi House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.8
+        }
+      },
+      {
+        "name": "Hunee",
+        "entity_id": "892B413C-55FF-01B7-D42F-2CAF25473725",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.48,
+        "properties": {
+          "short_description": "Berlin-based DJ and producer"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:disco",
+            "name": "Disco",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:soul",
+            "name": "Soul",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.79
+        }
+      },
+      {
+        "name": "Peggy Gou",
+        "entity_id": "A9F457E0-7FC5-A1B6-6446-6FBD187907B3",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.89,
+        "properties": {
+          "short_description": "South Korean DJ and producer"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:house",
+            "name": "House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:techno",
+            "name": "Techno",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:electronic",
+            "name": "Electronic",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.77
+        }
+      },
+      {
+        "name": "Andrés",
+        "entity_id": "5BED0CA0-A531-8E53-096E-4BA09F9EB4E1",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.4,
+        "properties": {
+          "short_description": "Detroit producer and DJ"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:deep_house",
+            "name": "Deep House",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:soul",
+            "name": "Soul",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:hip_hop",
+            "name": "Hip Hop",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.76
+        }
+      },
+      {
+        "name": "Kamaal Williams",
+        "entity_id": "EE5FED42-9DC1-4F30-6AE4-D6337D5C0005",
+        "type": "urn:entity",
+        "subtype": "urn:entity:artist",
+        "popularity": 0.55,
+        "properties": {
+          "short_description": "English keyboardist and producer"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:genre:music:nu_jazz",
+            "name": "Nu Jazz",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:broken_beat",
+            "name": "Broken Beat",
+            "type": "urn:tag:genre:music"
+          },
+          {
+            "id": "urn:tag:genre:music:jazz_fusion",
+            "name": "Jazz Fusion",
+            "type": "urn:tag:genre:music"
+          }
+        ],
+        "query": {
+          "affinity": 0.74
+        }
+      }
+    ]
+  },
+  "duration": 112
+}

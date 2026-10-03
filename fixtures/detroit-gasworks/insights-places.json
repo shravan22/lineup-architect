@@ -1,0 +1,159 @@
+{
+  "_fixture": "SAMPLE DATA: hand-written fixture in the documented Qloo response shape. Not a live Qloo response.",
+  "success": true,
+  "results": {
+    "entities": [
+      {
+        "name": "Spot Lite",
+        "entity_id": "701C4480-3E61-2E58-522F-5E22F99614A9",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3561,
+          "lon": -83.0313
+        },
+        "properties": {
+          "address": "2905 Beaufait St, Detroit, MI",
+          "short_description": "Bar"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:bar",
+            "name": "Bar",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.9
+        }
+      },
+      {
+        "name": "Marble Bar",
+        "entity_id": "2EB71D2C-B4D2-F945-87CE-EF3180DE3316",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3685,
+          "lon": -83.0806
+        },
+        "properties": {
+          "address": "1501 Holden St, Detroit, MI",
+          "short_description": "Bar & club"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:bar_club",
+            "name": "Bar & club",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.88
+        }
+      },
+      {
+        "name": "Motor City Wine",
+        "entity_id": "CFE274B1-55AB-CCF5-5BDD-8E88E01407C9",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3311,
+          "lon": -83.0719
+        },
+        "properties": {
+          "address": "1949 Michigan Ave, Detroit, MI",
+          "short_description": "Wine bar"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:wine_bar",
+            "name": "Wine bar",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.84
+        }
+      },
+      {
+        "name": "Third Man Records Cass Corridor",
+        "entity_id": "A7BB8382-8E0F-A120-0929-FB279D77AFF8",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3513,
+          "lon": -83.0661
+        },
+        "properties": {
+          "address": "441 W Canfield St, Detroit, MI",
+          "short_description": "Record store"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:record_store",
+            "name": "Record store",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.81
+        }
+      },
+      {
+        "name": "Detroit City Distillery",
+        "entity_id": "EDD42AFF-F2DE-9B7B-D393-1CA9C408B9CB",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3467,
+          "lon": -83.0412
+        },
+        "properties": {
+          "address": "2462 Riopelle St, Detroit, MI",
+          "short_description": "Distillery"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:distillery",
+            "name": "Distillery",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.78
+        }
+      },
+      {
+        "name": "Eastern Market",
+        "entity_id": "66D08726-3827-C1A5-6CF6-D78A69133B09",
+        "type": "urn:entity",
+        "subtype": "urn:entity:place",
+        "popularity": 0.5,
+        "location": {
+          "lat": 42.3473,
+          "lon": -83.0413
+        },
+        "properties": {
+          "address": "2934 Russell St, Detroit, MI",
+          "short_description": "Market"
+        },
+        "tags": [
+          {
+            "id": "urn:tag:category:place:market",
+            "name": "Market",
+            "type": "urn:tag:category:place"
+          }
+        ],
+        "query": {
+          "affinity": 0.74
+        }
+      }
+    ]
+  },
+  "duration": 95
+}

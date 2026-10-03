@@ -1,0 +1,119 @@
+{
+  "_fixture": "SAMPLE DATA: hand-written fixture in the documented Qloo response shape. Not a live Qloo response.",
+  "success": true,
+  "results": {
+    "tags": [
+      {
+        "tag_id": "urn:tag:genre:music:deep_house",
+        "name": "Deep House",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.94
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:detroit_techno",
+        "name": "Detroit Techno",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.91
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.89
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:house",
+        "name": "House",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.86
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:nu_jazz",
+        "name": "Nu Jazz",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.78
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:ambient",
+        "name": "Ambient",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.72
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:soul",
+        "name": "Soul",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.7
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:experimental",
+        "name": "Experimental",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.68
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:disco",
+        "name": "Disco",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.66
+        }
+      },
+      {
+        "tag_id": "urn:tag:genre:music:broken_beat",
+        "name": "Broken Beat",
+        "types": [
+          "urn:entity:artist"
+        ],
+        "subtype": "urn:tag:genre:music",
+        "query": {
+          "affinity": 0.61
+        }
+      }
+    ]
+  },
+  "duration": 41
+}
