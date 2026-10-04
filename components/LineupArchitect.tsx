@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { AgentEvent, DataSource, StatusInfo, VenueInput, Workspace } from "@/lib/types";
+import { bandLabel, capacityBand, DRAW_FIT_TEXT } from "@/lib/band";
+import { CITIES, OTHER_CITY } from "@/lib/cities";
+import type { AgentEvent, CustomVenueRequest, DataSource, StatusInfo, VenueInput, Workspace } from "@/lib/types";
 import { pitchMarkdown } from "@/lib/pitch";
 
 const AffinityMap = dynamic(() => import("./AffinityMap"), {
@@ -12,7 +14,7 @@ const AffinityMap = dynamic(() => import("./AffinityMap"), {
 
 interface Step {
   id: string;
-  kind: "tool" | "thought" | "notice";
+  kind: "tool" | "thought" | "notice" | "decision";
   label: string;
   detail?: string;
   status: "running" | "ok" | "error" | "info";
@@ -23,6 +25,7 @@ interface Step {
 }
 
 type RunState = "idle" | "running" | "done" | "error";
+const CUSTOM = "__custom";
 
 const pct = (x?: number) => (x === undefined ? "-" : String(Math.round(x * 100)));
 
@@ -35,16 +38,31 @@ const AGE_LABELS: Record<string, string> = {
   "55_and_older": "55+",
 };
 
+const EMPTY_FORM: CustomVenueRequest & { headliners: string[] } = {
+  name: "",
+  cityId: "chicago",
+  otherCity: "",
+  capacity: 400,
+  headliners: ["", "", ""],
+  genre: "",
+};
+
 export default function LineupArchitect({ status, venues }: { status: StatusInfo; venues: VenueInput[] }) {
   const [venueId, setVenueId] = useState(venues[0]?.id ?? "");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState<string | null>(null);
   const [runState, setRunState] = useState<RunState>("idle");
   const [steps, setSteps] = useState<Step[]>([]);
   const [ws, setWs] = useState<Workspace | null>(null);
   const [meta, setMeta] = useState<StatusInfo>(status);
+  const [needsLive, setNeedsLive] = useState<{ text: string; plan: string[] } | null>(null);
+  const [partial, setPartial] = useState(false);
+  const [elapsed, setElapsed] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const venue = venues.find((v) => v.id === venueId) ?? venues[0];
+  const isCustom = venueId === CUSTOM;
+  const venue = venues.find((v) => v.id === venueId);
   const sample = meta.qlooMode === "fixture";
 
   const handle = useCallback((e: AgentEvent) => {
@@ -55,8 +73,14 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       case "thought":
         setSteps((s) => [...s, { id: crypto.randomUUID(), kind: "thought", label: e.text, status: "info", by: e.by }]);
         break;
+      case "decision":
+        setSteps((s) => [...s, { id: crypto.randomUUID(), kind: "decision", label: e.title, detail: e.detail, status: "info", by: e.by }]);
+        break;
       case "notice":
         setSteps((s) => [...s, { id: crypto.randomUUID(), kind: "notice", label: e.text, status: "info" }]);
+        break;
+      case "needs_live":
+        setNeedsLive({ text: e.text, plan: e.plan });
         break;
       case "tool_start":
         setSteps((s) => [
@@ -79,27 +103,53 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         setRunState("error");
         break;
       case "done":
+        setPartial(!!e.partial);
+        setElapsed(e.elapsedMs ?? null);
         setRunState((r) => (r === "error" ? r : "done"));
         break;
     }
   }, []);
 
   const run = useCallback(async () => {
+    let payload: object;
+    if (isCustom) {
+      const headliners = form.headliners.map((h) => h.trim()).filter(Boolean);
+      const err = !form.name.trim()
+        ? "Give the venue a name."
+        : form.cityId === OTHER_CITY && (form.otherCity ?? "").trim().length < 2
+          ? "Type the city name."
+          : !(form.capacity >= 50 && form.capacity <= 20000)
+            ? "Capacity must be between 50 and 20000."
+            : !headliners.length
+              ? "Add at least one past headliner."
+              : null;
+      setFormError(err);
+      if (err) return;
+      payload = { custom: { ...form, headliners } };
+    } else {
+      payload = { venueId };
+    }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
     setSteps([]);
     setWs(null);
     setError(null);
+    setNeedsLive(null);
+    setPartial(false);
+    setElapsed(null);
     setRunState("running");
     try {
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ venueId }),
+        body: JSON.stringify(payload),
         signal: ac.signal,
       });
-      if (!res.ok || !res.body) throw new Error(`Request failed (HTTP ${res.status})`);
+      if (!res.ok || !res.body) {
+        const j = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(j?.error ?? `Request failed (HTTP ${res.status})`);
+      }
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
@@ -120,7 +170,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       setError(e instanceof Error ? e.message : "Something went wrong");
       setRunState("error");
     }
-  }, [venueId, handle]);
+  }, [venueId, handle, isCustom, form]);
 
   const md = useMemo(() => (ws?.pitch ? pitchMarkdown(ws, meta) : ""), [ws, meta]);
 
@@ -132,6 +182,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     a.click();
     URL.revokeObjectURL(a.href);
   };
+
+  const setHeadliner = (i: number, v: string) => setForm((f) => ({ ...f, headliners: f.headliners.map((h, j) => (j === i ? v : h)) }));
+  const formBand = capacityBand(form.capacity || 0);
 
   return (
     <div className="shell">
@@ -145,7 +198,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         </div>
         <div className="badges" aria-label="Data and agent mode">
           {sample ? (
-            <span className="badge badge-sample" title="No Qloo API key configured: results come from hand-written sample fixtures, not live Qloo data.">
+            <span className="badge badge-sample" title="No Qloo API key configured: preset results come from hand-written sample fixtures, not live Qloo data.">
               Sample data
             </span>
           ) : (
@@ -159,8 +212,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
       {sample && (
         <p className="banner" role="note">
-          <strong>Sample data mode.</strong> No Qloo API key is configured, so every score, map cell and brand below comes from
-          illustrative fixtures in the documented Qloo response format. They are not real Qloo results.
+          <strong>Sample data mode.</strong> No Qloo API key is configured, so every score, map cell and brand for the preset venues
+          comes from illustrative fixtures in the documented Qloo response format. They are not real Qloo results. Your own venue
+          needs a live key.
         </p>
       )}
 
@@ -168,28 +222,127 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         <section className="panel setup" aria-labelledby="setup-h">
           <h2 id="setup-h">1. Pick a venue</h2>
           <fieldset className="venues">
-            <legend className="sr-only">Sample venues</legend>
+            <legend className="sr-only">Venues</legend>
             {venues.map((v) => (
               <label key={v.id} className={`venue ${v.id === venueId ? "selected" : ""}`}>
                 <input type="radio" name="venue" value={v.id} checked={v.id === venueId} onChange={() => setVenueId(v.id)} />
                 <span className="venue-name">
-                  {v.name} <small>{v.city} / {v.capacity} cap</small>
+                  {v.name} <small>{v.city} / {v.capacity} cap / {v.genreHint}</small>
                 </span>
-                <span className="venue-blurb">{v.blurb}</span>
-                <span className="venue-heads">
-                  Past headliners: <strong>{v.headliners.join(", ")}</strong>
-                </span>
+                {v.id === venueId && (
+                  <>
+                    <span className="venue-blurb">{v.blurb}</span>
+                    <span className="venue-heads">
+                      Past headliners: <strong>{v.headliners.join(", ")}</strong>
+                    </span>
+                  </>
+                )}
               </label>
             ))}
+            <label className={`venue venue-custom ${isCustom ? "selected" : ""}`}>
+              <input type="radio" name="venue" value={CUSTOM} checked={isCustom} onChange={() => setVenueId(CUSTOM)} />
+              <span className="venue-name">
+                Your venue <small>any city, capacity and past headliners{sample ? " (needs a live Qloo key)" : ""}</small>
+              </span>
+            </label>
           </fieldset>
-          <button className="run" onClick={run} disabled={runState === "running" || !venue}>
-            {runState === "running" ? "Agent working..." : runState === "idle" ? "Plan the next booking" : "Run again"}
+
+          {isCustom && (
+            <form
+              className="custom-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                run();
+              }}
+              noValidate
+            >
+              <label>
+                Venue name
+                <input value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. The Velvet Room" required />
+              </label>
+              <div className="row">
+                <label>
+                  City
+                  <select value={form.cityId} onChange={(e) => setForm({ ...form, cityId: e.target.value })}>
+                    <optgroup label="United States">
+                      {CITIES.filter((c) => c.region === "US").map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Europe">
+                      {CITIES.filter((c) => c.region === "Europe").map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <option value={OTHER_CITY}>Other (located via Qloo)</option>
+                  </select>
+                </label>
+                <label className="cap">
+                  Capacity
+                  <input
+                    type="number"
+                    min={50}
+                    max={20000}
+                    step={10}
+                    value={form.capacity || ""}
+                    onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
+                  />
+                </label>
+              </div>
+              {form.cityId === OTHER_CITY && (
+                <label>
+                  City name
+                  <input value={form.otherCity} maxLength={60} onChange={(e) => setForm({ ...form, otherCity: e.target.value })} placeholder="e.g. Leeds" />
+                </label>
+              )}
+              <fieldset className="heads">
+                <legend>Past headliners (1-3)</legend>
+                {form.headliners.map((h, i) => (
+                  <input
+                    key={i}
+                    value={h}
+                    maxLength={80}
+                    aria-label={`Past headliner ${i + 1}`}
+                    placeholder={["e.g. Khruangbin", "optional", "optional"][i]}
+                    onChange={(e) => setHeadliner(i, e.target.value)}
+                  />
+                ))}
+              </fieldset>
+              <label>
+                Genre focus <small>(optional)</small>
+                <input value={form.genre} maxLength={40} onChange={(e) => setForm({ ...form, genre: e.target.value })} placeholder="e.g. psych rock" />
+              </label>
+              <p className="hint">
+                {form.capacity >= 50 ? `A ${form.capacity}-cap room targets Qloo popularity ${bandLabel(formBand)}.` : ""} The agent widens or narrows that band
+                if too few or too many acts fit.
+              </p>
+              {formError && (
+                <p className="error" role="alert">
+                  {formError}
+                </p>
+              )}
+            </form>
+          )}
+
+          <button className="run" onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
+            {runState === "running"
+              ? "Agent working..."
+              : isCustom
+                ? sample
+                  ? "Plan with live Qloo data"
+                  : "Plan the next booking"
+                : runState === "idle"
+                  ? "Plan the next booking"
+                  : "Run again"}
           </button>
-          <p className="hint">Custom venues need a live Qloo key and arrive in a later build.</p>
 
           <h2 id="trace-h">2. Agent trace</h2>
           <div aria-live="polite" aria-labelledby="trace-h">
-            {runState === "idle" && <p className="empty">Press the button to watch the agent plan its Qloo calls step by step.</p>}
+            {runState === "idle" && <p className="empty">Press the button to watch the agent plan its Qloo calls and make its booking decisions.</p>}
             <ol className="trace">
               {steps.map((s) => (
                 <li key={s.id} className={`step step-${s.kind} step-${s.status}`}>
@@ -212,6 +365,15 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                         {s.endpoints && s.endpoints.length > 0 && <div className="step-endpoint">{s.endpoints.join(", ")}</div>}
                       </div>
                     </>
+                  ) : s.kind === "decision" ? (
+                    <div className="decision">
+                      <div className="decision-head">
+                        <span className="decision-tag">Decision</span>
+                        <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the scripted planner"}</span>
+                      </div>
+                      <div className="decision-title">{s.label}</div>
+                      {s.detail && <div className="decision-detail">{s.detail}</div>}
+                    </div>
                   ) : (
                     <p className="thought">
                       <span className="who">{s.kind === "notice" ? "Notice" : s.by === "llm" ? "Agent" : "Planner"}:</span> {s.label}
@@ -221,6 +383,11 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               ))}
             </ol>
             {runState === "running" && steps.length === 0 && <p className="empty">Starting agent...</p>}
+            {runState === "done" && elapsed !== null && !needsLive && (
+              <p className="hint">
+                Finished in {(elapsed / 1000).toFixed(1)} s{partial ? " (partial: time budget reached)" : ""}.
+              </p>
+            )}
             {error && (
               <p className="error" role="alert">
                 {error} <button onClick={run}>Retry</button>
@@ -231,7 +398,29 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
         <section className="results" aria-labelledby="results-h">
           <h2 id="results-h" className="sr-only">Results</h2>
-          {!ws?.picks.length && (
+
+          {needsLive && (
+            <div className="panel needs-live" role="status">
+              <h3>Needs a live Qloo key</h3>
+              <p>{needsLive.text}</p>
+              <p className="sub">With a key, the agent would run these steps for your venue:</p>
+              <ol className="plan">
+                {needsLive.plan.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ol>
+              <p className="sub">Meanwhile, try one of the five presets to see the full flow on labelled sample data.</p>
+            </div>
+          )}
+
+          {partial && ws && (
+            <p className="banner partial" role="note">
+              <strong>Partial result.</strong> The agent hit its time budget before every step finished. What is shown is complete for
+              each section that has data; the pitch is a template.
+            </p>
+          )}
+
+          {!needsLive && !ws?.picks.length && (
             <div className="panel placeholder">
               {runState === "running" ? (
                 <>
@@ -242,7 +431,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               ) : runState === "done" ? (
                 <p className="empty">The agent finished without candidates. Check the trace for errors.</p>
               ) : (
-                <p className="empty">Ranked acts, the affinity map, the audience profile, sponsors and the pitch will appear here.</p>
+                <p className="empty">Ranked acts with a draw-fit check, the affinity map, the audience profile, sponsors and the pitch will appear here.</p>
               )}
             </div>
           )}
@@ -250,6 +439,17 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           {ws && ws.picks.length > 0 && (
             <div className="panel">
               <h3>Ranked acts {sample && <span className="badge badge-sample small">Sample</span>}</h3>
+              {ws.band && (
+                <p className="band" title="Qloo popularity is a 0-100 percentile. The capacity-to-band mapping is a heuristic.">
+                  {ws.venue.capacity}-cap room: target popularity <strong>{bandLabel(ws.band.target)}</strong>
+                  {(ws.band.used.min !== ws.band.target.min || ws.band.used.max !== ws.band.target.max) && (
+                    <>
+                      , agent searched <strong>{bandLabel(ws.band.used)}</strong>
+                    </>
+                  )}
+                  . Queries: {ws.band.history.join("; ")}. Acts that fit the room are listed first.
+                </p>
+              )}
               {ws.tasteTags.length > 0 && (
                 <p className="taste">
                   Venue taste profile:{" "}
@@ -265,7 +465,14 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <li key={p.entityId} className="card">
                     <span className="rank">#{i + 1}</span>
                     <div className="card-body">
-                      <div className="card-name">{p.name}</div>
+                      <div className="card-name">
+                        {p.name}
+                        {p.drawFit && (
+                          <span className={`fit fit-${p.drawFit}`} title={DRAW_FIT_TEXT[p.drawFit].long}>
+                            {DRAW_FIT_TEXT[p.drawFit].short}
+                          </span>
+                        )}
+                      </div>
                       {p.shortDescription && <div className="card-desc">{p.shortDescription}</div>}
                       <div className="meter" aria-label={`Affinity ${pct(p.affinity)} out of 100`}>
                         <span style={{ width: `${pct(p.affinity)}%` }} />

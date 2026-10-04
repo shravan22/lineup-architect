@@ -163,3 +163,36 @@ button { font: inherit; cursor: pointer; }
   .layout { display: block; }
   .pitch { border: 0; padding: 0; }
 }
+
+/* ---- custom venue form ---- */
+.venue-custom { border-style: dashed; }
+.custom-form { display: grid; gap: 0.55rem; margin: 0 0 0.75rem; font-size: 0.88rem; }
+.custom-form label { display: grid; gap: 0.2rem; font-weight: 600; }
+.custom-form small { font-weight: 400; color: var(--muted); }
+.custom-form input, .custom-form select { font: inherit; font-weight: 400; padding: 0.45rem 0.55rem; border: 1px solid #cfccd9; border-radius: 8px; background: #fff; width: 100%; }
+.custom-form .row { display: grid; grid-template-columns: 1fr 7rem; gap: 0.5rem; }
+.custom-form .heads { border: 0; padding: 0; margin: 0; display: grid; gap: 0.35rem; }
+.custom-form .heads legend { font-weight: 600; margin-bottom: 0.2rem; padding: 0; }
+.custom-form .error { margin: 0; }
+
+/* ---- decisions, band, draw fit ---- */
+.step-decision { display: block; }
+.decision { border: 1px solid #cbb9ff; background: #f7f3ff; border-left: 4px solid var(--accent); border-radius: 8px; padding: 0.5rem 0.65rem; }
+.decision-head { display: flex; gap: 0.5rem; align-items: center; font-size: 0.72rem; }
+.decision-tag { background: var(--accent); color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 4px; padding: 0.05rem 0.4rem; }
+.decision-by { color: var(--muted); }
+.decision-title { font-weight: 700; margin-top: 0.2rem; }
+.decision-detail { color: #3d3a48; font-size: 0.85rem; }
+.band { font-size: 0.86rem; color: var(--muted); margin: 0 0 0.6rem; }
+.band strong { color: var(--ink); }
+.card-name { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.fit { font-size: 0.68rem; font-weight: 700; border-radius: 999px; padding: 0.05rem 0.45rem; border: 1px solid transparent; }
+.fit-fits { background: #e5f6ec; color: var(--ok); border-color: #9fd9b4; }
+.fit-stretch { background: #fff1e6; color: #a43e00; border-color: #f5b98a; }
+.fit-under { background: #eef0f4; color: #374151; border-color: #cfd4dc; }
+.fit-unknown { background: #f3f2f6; color: var(--muted); }
+
+/* ---- needs-live and partial states ---- */
+.needs-live { border: 2px solid #f0c36d; background: #fffaf0; }
+.needs-live .plan { margin: 0 0 0.75rem; padding-left: 1.25rem; display: grid; gap: 0.25rem; font-size: 0.92rem; }
+.banner.partial { margin: 0; }

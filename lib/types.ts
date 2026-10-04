@@ -18,6 +18,44 @@ export interface VenueInput {
   /** A genre phrase used to look up Qloo tag IDs via /v2/tags */
   genreHint: string;
   blurb: string;
+  /** Folder of labelled sample fixtures (presets only). Custom venues have none. */
+  fixtureSet?: string;
+  /** True when the user typed this venue in the custom form. */
+  custom?: boolean;
+  /** True when lat/lng are unknown and must be located via Qloo /search (live only). */
+  needsGeocode?: boolean;
+}
+
+/** What the browser sends for a user-entered venue. Validated on the server. */
+export interface CustomVenueRequest {
+  name: string;
+  cityId: string; // an id from lib/cities.ts, or "__other"
+  otherCity?: string;
+  capacity: number;
+  headliners: string[];
+  genre?: string;
+}
+
+/** Qloo popularity percentile band (0..1). */
+export interface PopBand {
+  min: number;
+  max: number;
+}
+
+export type DrawFit = "under" | "fits" | "stretch" | "unknown";
+
+export interface BandState {
+  /** Band derived from the venue capacity; draw-fit badges use this one. */
+  target: PopBand;
+  /** Band used for the latest recommend_artists query (may be widened or narrowed). */
+  used: PopBand;
+  /** One line per query, e.g. "30-70: 5 acts in band". */
+  history: string[];
+}
+
+export interface PendingChoice {
+  query: string;
+  candidates: { entityId: string; name: string; popularity?: number; description?: string; tags: string[] }[];
 }
 
 export interface ResolvedEntity {
@@ -44,6 +82,7 @@ export interface ArtistPick {
   tags: TagInfo[];
   sharedTags: string[]; // tag names shared with the venue taste profile
   shortDescription?: string;
+  drawFit?: DrawFit;
 }
 
 export interface HeatPoint {
@@ -100,6 +139,11 @@ export interface Workspace {
   brands: BrandPick[];
   places: PlacePick[];
   pitch?: Pitch;
+  band?: BandState;
+  /** Headliner searches with more than one plausible artist, waiting for a decision. */
+  pending: PendingChoice[];
+  /** Set when the time budget ran out and the result is incomplete. */
+  partial?: boolean;
 }
 
 export interface LlmInfo {
@@ -111,6 +155,8 @@ export interface LlmInfo {
 export type AgentEvent =
   | { type: "meta"; qlooMode: QlooMode; llm: LlmInfo }
   | { type: "thought"; text: string; by: "llm" | "scripted" | "system" }
+  | { type: "decision"; by: "llm" | "scripted"; title: string; detail: string }
+  | { type: "needs_live"; text: string; plan: string[] }
   | {
       type: "tool_start";
       id: string;
@@ -129,7 +175,7 @@ export type AgentEvent =
     }
   | { type: "workspace"; workspace: Workspace }
   | { type: "notice"; text: string }
-  | { type: "done" }
+  | { type: "done"; partial?: boolean; elapsedMs?: number }
   | { type: "error"; message: string };
 
 export interface StatusInfo {

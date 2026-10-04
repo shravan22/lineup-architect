@@ -1,3 +1,4 @@
+import { bandLabel, DRAW_FIT_TEXT } from "./band";
 import type { StatusInfo, Workspace } from "./types";
 
 const pct = (x?: number) => (x === undefined ? "-" : String(Math.round(x * 100)));
@@ -10,9 +11,11 @@ export function pitchMarkdown(ws: Workspace, meta: StatusInfo): string {
   const lines = [
     `# ${p.headline}`,
     "",
+    ws.partial ? "> PARTIAL: the agent hit its time budget; some sections may be missing.\n" : "",
     sample ? "> SAMPLE DATA: generated from illustrative fixtures, not live Qloo results. Do not send.\n" : "",
     `**Venue:** ${ws.venue.name}, ${ws.venue.city} (${ws.venue.capacity} capacity)  `,
-    `**Past headliners:** ${ws.seeds.map((s) => s.name).join(", ")}`,
+    `**Past headliners:** ${ws.seeds.map((s) => s.name).join(", ")}  `,
+    ws.band ? `**Draw-fit band:** Qloo popularity ${bandLabel(ws.band.target)} for this capacity (searched ${bandLabel(ws.band.used)})` : "",
     "",
     p.summary,
     "",
@@ -20,9 +23,9 @@ export function pitchMarkdown(ws: Workspace, meta: StatusInfo): string {
     ...p.pickRationales.map((r) => `- **${r.artist}:** ${r.why}`),
     "",
     "## Ranked shortlist",
-    "| # | Artist | Affinity | Popularity |",
-    "|---|---|---|---|",
-    ...ws.picks.map((a, i) => `| ${i + 1} | ${a.name} | ${pct(a.affinity)} | ${pct(a.popularity)} |`),
+    "| # | Artist | Affinity | Popularity | Draw fit |",
+    "|---|---|---|---|---|",
+    ...ws.picks.map((a, i) => `| ${i + 1} | ${a.name} | ${pct(a.affinity)} | ${pct(a.popularity)} | ${DRAW_FIT_TEXT[a.drawFit ?? "unknown"].short} |`),
     "",
     "## Sponsor shortlist",
     ...ws.brands.map((b) => `- ${b.name} (${b.category ?? "brand"}), affinity ${pct(b.affinity)}`),

@@ -10,6 +10,16 @@ interface Props {
   places: PlacePick[];
 }
 
+const FRAME_KM = 25;
+
+function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const R = 6371;
+  const dLat = ((bLat - aLat) * Math.PI) / 180;
+  const dLng = ((bLng - aLng) * Math.PI) / 180;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
 // Colour ramp for affinity 0..1 (light yellow -> deep red), readable on a light basemap.
 export function affinityColor(a: number): string {
   if (a >= 0.9) return "#a50026";
@@ -34,7 +44,13 @@ export default function AffinityMap({ venue, points, places }: Props) {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
-      const bounds = L.latLngBounds([[venue.lat, venue.lng]]);
+      const located = !venue.needsGeocode;
+      // Frame the venue's metro: cells far out of town are still drawn but do not
+      // zoom the map out (e.g. Ann Arbor cells for a Detroit venue).
+      const near = located ? points.filter((p) => kmBetween(venue.lat, venue.lng, p.lat, p.lng) <= FRAME_KM) : points;
+      const framed = near.length ? near : points;
+      const bounds = located ? L.latLngBounds([[venue.lat, venue.lng]]) : L.latLngBounds(framed.map((p) => [p.lat, p.lng] as [number, number]));
+      for (const p of framed) bounds.extend([p.lat, p.lng]);
       for (const p of points) {
         L.circle([p.lat, p.lng], {
           radius: 650,
@@ -44,7 +60,6 @@ export default function AffinityMap({ venue, points, places }: Props) {
         })
           .bindTooltip(`Affinity ${Math.round(p.affinity * 100)}`)
           .addTo(map);
-        bounds.extend([p.lat, p.lng]);
       }
       for (const pl of places) {
         if (pl.lat === undefined || pl.lng === undefined) continue;
@@ -52,9 +67,11 @@ export default function AffinityMap({ venue, points, places }: Props) {
           .bindTooltip(`${pl.name} (partner spot)`)
           .addTo(map);
       }
-      L.circleMarker([venue.lat, venue.lng], { radius: 9, color: "#111", weight: 3, fillColor: "#22c55e", fillOpacity: 1 })
-        .bindTooltip(`${venue.name} (venue)`, { permanent: false })
-        .addTo(map);
+      if (located) {
+        L.circleMarker([venue.lat, venue.lng], { radius: 9, color: "#111", weight: 3, fillColor: "#22c55e", fillOpacity: 1 })
+          .bindTooltip(`${venue.name} (venue)`, { permanent: false })
+          .addTo(map);
+      }
       map.fitBounds(bounds.pad(0.1));
     })();
     return () => {

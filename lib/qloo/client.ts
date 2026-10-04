@@ -67,30 +67,35 @@ async function liveGet(pathname: string, params: Record<string, string>): Promis
   throw lastErr instanceof Error ? lastErr : new QlooError(String(lastErr));
 }
 
-export async function qlooGet<T = unknown>(pathname: string, rawParams: Params): Promise<QlooResult<T>> {
+/** Which labelled sample fixture set answers calls in fixture mode (preset venues only). */
+export interface QlooCtx {
+  fixtureSet?: string;
+}
+
+export async function qlooGet<T = unknown>(pathname: string, rawParams: Params, ctx: QlooCtx = {}): Promise<QlooResult<T>> {
   const params = clean(rawParams);
   const key = cacheKey(pathname, params);
   const endpoint = `GET ${pathname}`;
 
   if (qlooMode() === "fixture") {
-    const data = fixtureFor(pathname, params);
+    const data = fixtureFor(ctx.fixtureSet, pathname, params);
     if (data === null) {
       throw new QlooError(
-        "No sample data for this request. Sample mode only covers the Detroit demo venue; add a Qloo API key for live data.",
+        "No sample data for this request. Sample mode only covers the five preset venues; add a Qloo API key for live data.",
       );
     }
     return { data: data as T, source: "fixture", endpoint };
   }
 
-  const cached = cacheGet(key);
+  const cached = await cacheGet(key);
   if (cached !== undefined) return { data: cached as T, source: "cache", endpoint };
 
   try {
     const data = await liveGet(pathname, params);
-    cacheSet(key, data);
+    await cacheSet(key, data);
     return { data: data as T, source: "live", endpoint };
   } catch (e) {
-    const stale = cacheGet(key, true);
+    const stale = await cacheGet(key, true);
     if (stale !== undefined) return { data: stale as T, source: "cache", endpoint };
     throw e;
   }
@@ -99,11 +104,11 @@ export async function qlooGet<T = unknown>(pathname: string, rawParams: Params):
 // ---- Thin typed wrappers ----
 
 export const qloo = {
-  search: (query: string, type = "urn:entity:artist", take = 3) =>
-    qlooGet("/search", { query, types: type, take }),
+  search: (query: string, type = "urn:entity:artist", take = 3, ctx?: QlooCtx) =>
+    qlooGet("/search", { query, types: type, take }, ctx),
 
-  tags: (query: string, take = 5) =>
-    qlooGet("/v2/tags", { "filter.query": query, "filter.parents.types": "urn:entity:artist", take }),
+  tags: (query: string, take = 5, ctx?: QlooCtx) =>
+    qlooGet("/v2/tags", { "filter.query": query, "filter.parents.types": "urn:entity:artist", take }, ctx),
 
-  insights: (params: Params) => qlooGet("/v2/insights", params),
+  insights: (params: Params, ctx?: QlooCtx) => qlooGet("/v2/insights", params, ctx),
 };

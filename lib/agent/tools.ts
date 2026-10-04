@@ -1,5 +1,6 @@
 import "server-only";
-import { qloo, type QlooResult } from "@/lib/qloo/client";
+import { bandLabel, capacityBand, drawFit, inBand } from "@/lib/band";
+import { qloo, type QlooCtx, type QlooResult } from "@/lib/qloo/client";
 import {
   parseDemographics,
   parseEntities,
@@ -8,13 +9,19 @@ import {
   parseTagList,
   toBrand,
   toPlace,
+  type RawEntity,
 } from "@/lib/qloo/normalize";
-import type { ArtistPick, DataSource, Pitch, Workspace } from "@/lib/types";
+import type { ArtistPick, DataSource, PendingChoice, Pitch, PopBand, Workspace } from "@/lib/types";
 
-// Agent tools. Each tool calls Qloo (or the sample fixtures), writes structured
-// results into the shared Workspace (which the UI renders), and returns a compact
-// text result for the LLM. Qloo facts live in the Workspace; LLM text is only
-// used for the pitch narrative, so data and interpretation stay separate.
+// Agent tools. Each tool calls Qloo (or the labelled sample fixtures), writes
+// structured results into the shared Workspace (which the UI renders), and
+// returns a compact text result for the model. Qloo facts live in the
+// Workspace; LLM text is only used for decisions and the pitch narrative.
+//
+// Two tools exist so the agent makes real choices:
+//  - resolve_headliner: when /search returns more than one plausible artist
+//  - recommend_artists(popularity_min/max): when too few or too many acts fit
+//    the capacity band, the agent widens or narrows it and re-queries.
 
 export interface JsonSchema {
   type: "object";
@@ -34,19 +41,41 @@ export interface ToolOutcome {
   forModel: string; // compact result for the LLM
   sources: DataSource[];
   endpoints: string[];
+  /** Visible agent decisions made through this call (shown in the trace). */
+  decisions?: { title: string; detail: string }[];
 }
 
 type Args = Record<string, unknown>;
+
+/** Minimum number of acts inside the popularity band before the agent widens it. */
+export const MIN_FIT = 6;
+export const DEFAULT_TAKE = 10;
 
 export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "search_artist",
     label: "Resolve past headliner",
-    description: "Resolve one of the venue's past headliners to a Qloo artist entity ID using Qloo /search. Call once per headliner.",
+    description:
+      "Look up one past headliner with Qloo /search. If exactly one artist matches it is resolved. If several plausible artists match, the result lists the candidates and you must call resolve_headliner to pick one.",
     parameters: {
       type: "object",
       properties: { name: { type: "string", description: "Artist name exactly as the venue wrote it" } },
       required: ["name"],
+    },
+  },
+  {
+    name: "resolve_headliner",
+    label: "Disambiguate headliner",
+    description:
+      "Pick which Qloo entity a past headliner refers to when search_artist returned several candidates. Use the venue's genre and the candidates' descriptions and tags. Explain the choice in `reason`.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The headliner name as searched" },
+        entity_id: { type: "string", description: "The chosen candidate's entity_id" },
+        reason: { type: "string", description: "One sentence: why this candidate" },
+      },
+      required: ["query", "entity_id", "reason"],
     },
   },
   {
@@ -62,24 +91,30 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "taste_profile",
     label: "Build venue taste profile",
-    description: "Get the taste tags with the highest affinity to the resolved headliners (Qloo insights, filter.type=urn:tag). Requires resolved headliners.",
+    description:
+      "Get the taste tags with the highest affinity to the resolved headliners (Qloo insights, filter.type=urn:tag). Requires every headliner to be resolved.",
     parameters: { type: "object", properties: {} },
   },
   {
     name: "recommend_artists",
     label: "Rank candidate acts",
     description:
-      "Rank artists by Qloo affinity to the venue's past headliners and genre tags, localised to the venue's city (Qloo insights, filter.type=urn:entity:artist). Excludes the past headliners.",
+      "Rank artists by Qloo affinity to the past headliners and genre tags, localised to the venue's city, restricted to a Qloo popularity band (filter.popularity.min/max, 0..1 percentile). Defaults to the band for the venue's capacity. Returns how many acts fall inside the band. If fewer than 6 fit, call again with a wider band; if the band is crowded for a small room, you may lower popularity_max. Give a reason whenever you change the band.",
     parameters: {
       type: "object",
-      properties: { take: { type: "number", description: "How many candidates (5-15). Default 10." } },
+      properties: {
+        popularity_min: { type: "number", description: "Lower popularity bound 0..1 (default: capacity band)" },
+        popularity_max: { type: "number", description: "Upper popularity bound 0..1 (default: capacity band)" },
+        take: { type: "number", description: "How many candidates (5-15). Default 10." },
+        reason: { type: "string", description: "Why you chose this band (required when it differs from the default)" },
+      },
     },
   },
   {
     name: "audience_heatmap",
     label: "Map local affinity",
     description:
-      "Get a geographic heatmap of taste affinity in the venue's city for the given artists (Qloo insights, filter.type=urn:heatmap). Defaults to the top 3 candidates.",
+      "Get a geographic heatmap of taste affinity in the venue's city for the given artists (Qloo insights, filter.type=urn:heatmap). Defaults to the top 3 acts that fit the room.",
     parameters: {
       type: "object",
       properties: { artist_names: { type: "array", items: { type: "string" }, description: "Candidate names to map (optional)" } },
@@ -88,7 +123,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "audience_demographics",
     label: "Profile the audience",
-    description: "Get age and gender skew of fans for the given artists (Qloo insights, filter.type=urn:demographics). Defaults to the top 3 candidates.",
+    description: "Get age and gender skew of fans for the given artists (Qloo insights, filter.type=urn:demographics). Defaults to the top 3 acts that fit the room.",
     parameters: {
       type: "object",
       properties: { artist_names: { type: "array", items: { type: "string" }, description: "Candidate names (optional)" } },
@@ -112,7 +147,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "write_pitch",
     label: "Draft booking pitch",
     description:
-      "Finish by writing the one-page booking pitch. Only cite facts returned by earlier tools. Do not state causation or claims about individuals.",
+      "Finish by writing the one-page booking pitch. Only cite facts returned by earlier tools. Prefer acts whose draw fit is 'fits'. Do not state causation or claims about individuals.",
     parameters: {
       type: "object",
       properties: {
@@ -120,7 +155,7 @@ export const TOOL_SPECS: ToolSpec[] = [
         summary: { type: "string", description: "2-3 sentence summary for the talent buyer" },
         pick_rationales: {
           type: "array",
-          description: "Why each of the top 3 acts fits, citing affinity and shared tags",
+          description: "Why each of the top 3 acts fits, citing affinity, draw fit and shared tags",
           items: {
             type: "object",
             properties: {
@@ -136,18 +171,31 @@ export const TOOL_SPECS: ToolSpec[] = [
   },
 ];
 
-export const TOOL_LABELS = Object.fromEntries(TOOL_SPECS.map((t) => [t.name, t.label]));
+/** Labels for every tool, including locate_city which runs before the LLM loop. */
+export const TOOL_LABELS: Record<string, string> = {
+  ...Object.fromEntries(TOOL_SPECS.map((t) => [t.name, t.label])),
+  locate_city: "Locate the city",
+};
 
 const pct = (x: number) => Math.round(x * 100);
 const srcs = (...r: QlooResult[]) => ({ sources: r.map((x) => x.source), endpoints: r.map((x) => x.endpoint) });
+const norm = (s: string) => s.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 function seedIds(ws: Workspace): string[] {
+  if (ws.pending.length)
+    throw new Error(`Headliners still ambiguous: ${ws.pending.map((p) => p.query).join(", ")}. Call resolve_headliner first.`);
   if (!ws.seeds.length) throw new Error("No headliners resolved yet. Call search_artist first.");
   return ws.seeds.map((s) => s.entityId);
 }
 
+/** Acts that fit the room first, then by affinity. Used for defaults and the pitch. */
+export function bookableFirst(picks: ArtistPick[]): ArtistPick[] {
+  const rank = (p: ArtistPick) => (p.drawFit === "fits" ? 0 : p.drawFit === "unknown" ? 1 : 2);
+  return [...picks].sort((a, b) => rank(a) - rank(b) || b.affinity - a.affinity);
+}
+
 function pickIds(ws: Workspace, names: unknown): { ids: string[]; names: string[] } {
-  let chosen = ws.picks.slice(0, 3);
+  let chosen = bookableFirst(ws.picks).slice(0, 3);
   if (Array.isArray(names) && names.length) {
     const wanted = names.map((n) => String(n).toLowerCase());
     const found = ws.picks.filter((p) => wanted.includes(p.name.toLowerCase()));
@@ -162,30 +210,117 @@ function clampInt(v: unknown, def: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
+function unit(v: unknown, def: number) {
+  const n = typeof v === "number" && isFinite(v) ? v : def;
+  return Math.round(Math.min(1, Math.max(0, n)) * 100) / 100;
+}
+
+/** Search hits that plausibly refer to the query (same name, or one name contains the other). */
+export function plausible(query: string, hits: RawEntity[]): RawEntity[] {
+  const q = norm(query);
+  const artists = hits.filter((h) => h.types.includes("urn:entity:artist") || !h.types.length);
+  return artists.filter((h) => {
+    const n = norm(h.name);
+    return n === q || (n.length > 1 && q.includes(n)) || (q.length > 1 && n.includes(q));
+  });
+}
+
+function toCandidate(h: RawEntity): PendingChoice["candidates"][number] {
+  return { entityId: h.entityId, name: h.name, popularity: h.popularity, description: h.description, tags: h.tags.map((t) => t.name) };
+}
+
+/**
+ * Deterministic disambiguation used by the scripted planner (the LLM decides on
+ * its own). Score: exact name match, then overlap with the venue's genre tags
+ * and genre phrase, then popularity as a tiebreak.
+ */
+export function chooseCandidate(ws: Workspace, choice: PendingChoice): { entityId: string; reason: string } {
+  const genreWords = new Set(
+    [...ws.genreTags.map((t) => t.name), ws.venue.genreHint].flatMap((s) => s.toLowerCase().split(/[^a-z0-9]+/)).filter((w) => w.length > 2),
+  );
+  const genreNames = new Set(ws.genreTags.map((t) => t.name.toLowerCase()));
+  const scored = choice.candidates.map((c) => {
+    const exact = norm(c.name) === norm(choice.query);
+    const overlap = c.tags.filter((t) => genreNames.has(t.toLowerCase()) || t.toLowerCase().split(/[^a-z0-9]+/).some((w) => genreWords.has(w)));
+    return { c, exact, overlap, score: (exact ? 3 : 0) + overlap.length + (c.popularity ?? 0) * 0.5 };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const [best, ...rest] = scored;
+  const others = rest.map((r) => `${r.c.name}${r.c.description ? ` (${r.c.description})` : ""}`).join("; ");
+  const why = [
+    best.exact && !rest.some((r) => r.exact) ? "exact name match" : null,
+    best.overlap.length ? `shares ${best.overlap.slice(0, 3).join(", ")} with the venue's genre` : null,
+  ].filter(Boolean);
+  return {
+    entityId: best.c.entityId,
+    reason: `${choice.candidates.length} Qloo artists match "${choice.query}". Chose ${best.c.name}${best.c.description ? ` (${best.c.description})` : ""}: ${why.join(" and ") || "highest popularity"}. Rejected: ${others}.`,
+  };
+}
+
 export async function runTool(name: string, args: Args, ws: Workspace): Promise<ToolOutcome> {
   const loc = ws.venue.locationQuery;
+  const ctx: QlooCtx = { fixtureSet: ws.venue.fixtureSet };
   switch (name) {
+    case "locate_city": {
+      const r = await qloo.search(loc, "urn:entity:locality", 3, ctx);
+      const hit = parseSearch(r.data).find((h) => h.lat !== undefined && h.lng !== undefined);
+      if (!hit) return { summary: `Qloo found no locality for "${loc}"; the map will centre on the data`, forModel: "No locality found.", ...srcs(r) };
+      ws.venue = { ...ws.venue, lat: hit.lat!, lng: hit.lng!, needsGeocode: false, city: ws.venue.city || hit.name };
+      return { summary: `"${loc}" -> ${hit.name} (${hit.lat!.toFixed(3)}, ${hit.lng!.toFixed(3)})`, forModel: JSON.stringify({ locality: hit.name }), ...srcs(r) };
+    }
+
     case "search_artist": {
       const q = String(args.name ?? "").trim();
       if (!q) throw new Error("name is required");
-      const r = await qloo.search(q, "urn:entity:artist", 3);
+      const r = await qloo.search(q, "urn:entity:artist", 5, ctx);
       const hits = parseSearch(r.data);
-      const hit =
-        hits.find((h) => h.name.toLowerCase() === q.toLowerCase() && (h.types.includes("urn:entity:artist") || !h.types.length)) ??
-        hits.find((h) => h.types.includes("urn:entity:artist")) ??
-        hits[0];
-      if (!hit) return { summary: `No Qloo match for "${q}"`, forModel: `No match for ${q}.`, ...srcs(r) };
-      ws.seeds = [...ws.seeds.filter((s) => s.entityId !== hit.entityId), { query: q, entityId: hit.entityId, name: hit.name, popularity: hit.popularity, imageUrl: hit.imageUrl }];
+      let cands = plausible(q, hits);
+      if (!cands.length) cands = hits.filter((h) => h.types.includes("urn:entity:artist")).slice(0, 3);
+      if (!cands.length) return { summary: `No Qloo artist for "${q}"`, forModel: `No match for ${q}. Continue without it.`, ...srcs(r) };
+      if (cands.length === 1) {
+        const hit = cands[0];
+        ws.seeds = [...ws.seeds.filter((s) => s.entityId !== hit.entityId), { query: q, entityId: hit.entityId, name: hit.name, popularity: hit.popularity, imageUrl: hit.imageUrl }];
+        return {
+          summary: `"${q}" -> ${hit.name}`,
+          forModel: JSON.stringify({ resolved: hit.name, entity_id: hit.entityId, popularity: hit.popularity }),
+          ...srcs(r),
+        };
+      }
+      const choice: PendingChoice = { query: q, candidates: cands.slice(0, 4).map(toCandidate) };
+      ws.pending = [...ws.pending.filter((p) => p.query.toLowerCase() !== q.toLowerCase()), choice];
       return {
-        summary: `"${q}" -> ${hit.name} (${hits.length} candidate${hits.length === 1 ? "" : "s"})`,
-        forModel: JSON.stringify({ resolved: hit.name, entity_id: hit.entityId, popularity: hit.popularity }),
+        summary: `"${q}" is ambiguous: ${choice.candidates.map((c) => c.name + (c.description ? ` (${c.description})` : "")).join(" vs ")}`,
+        forModel: JSON.stringify({
+          ambiguous: true,
+          query: q,
+          candidates: choice.candidates.map((c) => ({ entity_id: c.entityId, name: c.name, description: c.description, tags: c.tags, popularity: c.popularity })),
+          next: "Call resolve_headliner with the entity_id that matches this venue.",
+        }),
         ...srcs(r),
+      };
+    }
+
+    case "resolve_headliner": {
+      const q = String(args.query ?? "").trim().toLowerCase();
+      const choice = ws.pending.find((p) => p.query.toLowerCase() === q) ?? (ws.pending.length === 1 ? ws.pending[0] : undefined);
+      if (!choice) throw new Error(`No ambiguous headliner called "${args.query}".`);
+      const c = choice.candidates.find((x) => x.entityId === String(args.entity_id ?? ""));
+      if (!c) throw new Error(`entity_id is not one of the candidates for "${choice.query}".`);
+      const reason = String(args.reason ?? "").slice(0, 400) || "No reason given.";
+      ws.pending = ws.pending.filter((p) => p !== choice);
+      ws.seeds = [...ws.seeds.filter((s) => s.entityId !== c.entityId), { query: choice.query, entityId: c.entityId, name: c.name, popularity: c.popularity }];
+      return {
+        summary: `"${choice.query}" -> ${c.name}${c.description ? ` (${c.description})` : ""}`,
+        forModel: JSON.stringify({ resolved: c.name, entity_id: c.entityId }),
+        sources: [],
+        endpoints: [],
+        decisions: [{ title: `Disambiguated "${choice.query}"`, detail: reason }],
       };
     }
 
     case "find_genre_tags": {
       const q = String(args.query ?? ws.venue.genreHint);
-      const r = await qloo.tags(q, 5);
+      const r = await qloo.tags(q, 5, ctx);
       const tags = parseTagList(r.data).slice(0, 3);
       ws.genreTags = tags;
       return {
@@ -196,12 +331,15 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
     }
 
     case "taste_profile": {
-      const r = await qloo.insights({
-        "filter.type": "urn:tag",
-        "filter.parents.types": "urn:entity:artist",
-        "signal.interests.entities": seedIds(ws).join(","),
-        take: 10,
-      });
+      const r = await qloo.insights(
+        {
+          "filter.type": "urn:tag",
+          "filter.parents.types": "urn:entity:artist",
+          "signal.interests.entities": seedIds(ws).join(","),
+          take: 10,
+        },
+        ctx,
+      );
       ws.tasteTags = parseTagList(r.data);
       return {
         summary: `Top tags: ${ws.tasteTags.slice(0, 4).map((t) => t.name).join(", ")}`,
@@ -211,18 +349,26 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
     }
 
     case "recommend_artists": {
-      const take = clampInt(args.take, 10, 5, 15);
+      const take = clampInt(args.take, DEFAULT_TAKE, 5, 15);
       const seeds = seedIds(ws);
-      const r = await qloo.insights({
-        "filter.type": "urn:entity:artist",
-        "signal.interests.entities": seeds.join(","),
-        "signal.interests.tags": ws.genreTags.map((t) => t.id).join(",") || undefined,
-        "signal.location.query": loc,
-        "filter.exclude.entities": seeds.join(","),
-        take,
-      });
+      const target = ws.band?.target ?? capacityBand(ws.venue.capacity);
+      let used: PopBand = { min: unit(args.popularity_min, target.min), max: unit(args.popularity_max, target.max) };
+      if (used.max - used.min < 0.1) used = target;
+      const r = await qloo.insights(
+        {
+          "filter.type": "urn:entity:artist",
+          "signal.interests.entities": seeds.join(","),
+          "signal.interests.tags": ws.genreTags.map((t) => t.id).join(",") || undefined,
+          "signal.location.query": loc,
+          "filter.exclude.entities": seeds.join(","),
+          "filter.popularity.min": used.min,
+          "filter.popularity.max": used.max,
+          take,
+        },
+        ctx,
+      );
       const tasteNames = new Set(ws.tasteTags.map((t) => t.name.toLowerCase()));
-      const picks: ArtistPick[] = parseEntities(r.data)
+      const all: ArtistPick[] = parseEntities(r.data)
         .filter((e) => !seeds.includes(e.entityId))
         .map((e) => ({
           entityId: e.entityId,
@@ -233,31 +379,52 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           shortDescription: e.description,
           tags: e.tags,
           sharedTags: e.tags.filter((t) => tasteNames.has(t.name.toLowerCase())).map((t) => t.name),
-        }))
-        .sort((a, b) => b.affinity - a.affinity)
-        .slice(0, take);
+          drawFit: drawFit(e.popularity, target),
+        }));
+      const picks = bookableFirst(all).slice(0, take);
+      // Count against the queried band on our side too: Qloo silently ignores invalid params.
+      const fitting = picks.filter((p) => inBand(p.popularity, used)).length;
+      const changed = used.min !== target.min || used.max !== target.max;
+      const prev = ws.band?.used ?? target;
       ws.picks = picks;
+      ws.band = { target, used, history: [...(ws.band?.history ?? []), `${bandLabel(used)}: ${fitting} act${fitting === 1 ? "" : "s"}`] };
+      const advice =
+        fitting < MIN_FIT
+          ? `Only ${fitting} acts are inside ${bandLabel(used)}. Widen the band (e.g. +/-0.08) and call recommend_artists again.`
+          : picks.length >= take && ws.venue.capacity <= 400 && !changed
+            ? "The band is crowded for a small room. Consider lowering popularity_max so fees stay bookable."
+            : "Enough acts fit the room.";
+      const decisions =
+        changed && typeof args.reason === "string" && args.reason.trim()
+          ? [{ title: `Popularity band ${bandLabel(prev)} -> ${bandLabel(used)}`, detail: String(args.reason).slice(0, 400) }]
+          : undefined;
       return {
-        summary: `${picks.length} acts ranked; top: ${picks.slice(0, 3).map((p) => `${p.name} ${pct(p.affinity)}`).join(", ")}`,
-        forModel: JSON.stringify(
-          picks.map((p) => ({ name: p.name, affinity: p.affinity, popularity: p.popularity, shared_tags: p.sharedTags })),
-        ),
+        summary: `Band ${bandLabel(used)}${changed ? ` (room target ${bandLabel(target)})` : ""}: ${fitting} in band; top: ${picks
+          .slice(0, 3)
+          .map((p) => `${p.name} ${pct(p.affinity)}`)
+          .join(", ")}`,
+        forModel: JSON.stringify({
+          capacity: ws.venue.capacity,
+          target_band: target,
+          query_band: used,
+          returned: picks.length,
+          in_band: fitting,
+          advice,
+          acts: picks.map((p) => ({ name: p.name, affinity: p.affinity, popularity: p.popularity, draw_fit: p.drawFit, shared_tags: p.sharedTags })),
+        }),
+        decisions,
         ...srcs(r),
       };
     }
 
     case "audience_heatmap": {
       const { ids, names } = pickIds(ws, args.artist_names);
-      const r = await qloo.insights({
-        "filter.type": "urn:heatmap",
-        "signal.interests.entities": ids.join(","),
-        "filter.location.query": loc,
-      });
+      const r = await qloo.insights({ "filter.type": "urn:heatmap", "signal.interests.entities": ids.join(","), "filter.location.query": loc }, ctx);
       ws.heatmap = parseHeatmap(r.data);
       ws.heatmapSubject = names;
       const near = shareWithinKm(ws, 5);
       return {
-        summary: `${ws.heatmap.length} map cells; ${near}% of affinity weight within 5 km of the venue`,
+        summary: `${ws.heatmap.length} map cells for ${names.join(", ")}; ${near}% of affinity within 5 km of the venue`,
         forModel: JSON.stringify({ cells: ws.heatmap.length, share_within_5km_pct: near, mapped: names }),
         ...srcs(r),
       };
@@ -265,7 +432,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "audience_demographics": {
       const { ids } = pickIds(ws, args.artist_names);
-      const r = await qloo.insights({ "filter.type": "urn:demographics", "signal.interests.entities": ids.join(",") });
+      const r = await qloo.insights({ "filter.type": "urn:demographics", "signal.interests.entities": ids.join(",") }, ctx);
       const names = new Map(ws.picks.map((p) => [p.entityId, p.name]));
       ws.demographics = parseDemographics(r.data, names);
       const top = ws.demographics.map((d) => `${d.name}: ${topBucket(d.age)}`);
@@ -278,13 +445,11 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "sponsor_brands": {
       const take = clampInt(args.take, 8, 3, 10);
-      const ids = [...seedIds(ws), ...ws.picks.slice(0, 3).map((p) => p.entityId)];
-      const r = await qloo.insights({
-        "filter.type": "urn:entity:brand",
-        "signal.interests.entities": ids.join(","),
-        "signal.location.query": loc,
-        take,
-      });
+      const ids = [...seedIds(ws), ...bookableFirst(ws.picks).slice(0, 3).map((p) => p.entityId)];
+      const r = await qloo.insights(
+        { "filter.type": "urn:entity:brand", "signal.interests.entities": ids.join(","), "signal.location.query": loc, take },
+        ctx,
+      );
       ws.brands = parseEntities(r.data).map(toBrand).sort((a, b) => b.affinity - a.affinity).slice(0, take);
       return {
         summary: `${ws.brands.length} brands; top: ${ws.brands.slice(0, 3).map((b) => b.name).join(", ")}`,
@@ -295,12 +460,10 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "partner_places": {
       const take = clampInt(args.take, 6, 3, 8);
-      const r = await qloo.insights({
-        "filter.type": "urn:entity:place",
-        "signal.interests.entities": seedIds(ws).join(","),
-        "filter.location.query": loc,
-        take,
-      });
+      const r = await qloo.insights(
+        { "filter.type": "urn:entity:place", "signal.interests.entities": seedIds(ws).join(","), "filter.location.query": loc, take },
+        ctx,
+      );
       ws.places = parseEntities(r.data).map(toPlace).sort((a, b) => b.affinity - a.affinity).slice(0, take);
       return {
         summary: `${ws.places.length} places; top: ${ws.places.slice(0, 3).map((p) => p.name).join(", ")}`,
@@ -317,11 +480,12 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
             .filter((p) => p.artist && p.why)
             .slice(0, 5)
         : [];
+      const t = templatePitch(ws);
       const pitch: Pitch = {
-        headline: String(args.headline ?? "").slice(0, 200) || templatePitch(ws).headline,
-        summary: String(args.summary ?? "").slice(0, 1200) || templatePitch(ws).summary,
-        pickRationales: rationales.length ? rationales : templatePitch(ws).pickRationales,
-        sponsorAngle: String(args.sponsor_angle ?? "").slice(0, 600) || templatePitch(ws).sponsorAngle,
+        headline: String(args.headline ?? "").slice(0, 200) || t.headline,
+        summary: String(args.summary ?? "").slice(0, 1200) || t.summary,
+        pickRationales: rationales.length ? rationales : t.pickRationales,
+        sponsorAngle: String(args.sponsor_angle ?? "").slice(0, 600) || t.sponsorAngle,
         author: args.__template ? "template" : "llm",
       };
       ws.pitch = pitch;
@@ -333,7 +497,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
 // ---- helpers ----
 
-function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
+export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
   const R = 6371;
   const dLat = ((bLat - aLat) * Math.PI) / 180;
   const dLng = ((bLng - aLng) * Math.PI) / 180;
@@ -342,6 +506,7 @@ function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
 }
 
 export function shareWithinKm(ws: Workspace, km: number): number {
+  if (ws.venue.needsGeocode) return 0;
   const total = ws.heatmap.reduce((s, p) => s + p.affinity, 0);
   if (!total) return 0;
   const near = ws.heatmap
@@ -355,26 +520,31 @@ export function topBucket(age: Record<string, number>): string {
   return e ? `${e[0].replace(/_/g, " ")} (+${pct(e[1])}% vs. avg)` : "n/a";
 }
 
-/** Deterministic pitch built only from Workspace facts (used by the scripted planner). */
+const FIT_WORDS = { fits: "fits the room", stretch: "a stretch for the room", under: "may under-draw", unknown: "draw fit unknown" } as const;
+
+/** Deterministic pitch built only from Workspace facts (used by the scripted planner and as a fallback). */
 export function templatePitch(ws: Workspace): Pitch {
-  const [a, b, c] = ws.picks;
-  const top3 = [a, b, c].filter(Boolean);
+  const top3 = bookableFirst(ws.picks).slice(0, 3);
+  const a = top3[0];
   const near = shareWithinKm(ws, 5);
   const brands = ws.brands.slice(0, 3).map((x) => x.name);
   const demo = ws.demographics[0];
+  const cityShort = ws.venue.city.split(",")[0];
   return {
-    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest taste fit for your next ${ws.venue.city.split(",")[0]} headline night`,
+    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest bookable taste fit for your next ${cityShort} headline night`,
     summary:
-      `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}. ` +
-      (ws.heatmap.length ? `${near}% of the mapped local affinity sits within 5 km of the venue. ` : "") +
+      `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}` +
+      (ws.band ? `, all checked against a popularity band of ${bandLabel(ws.band.target)} for a ${ws.venue.capacity}-capacity room. ` : ". ") +
+      (ws.heatmap.length && !ws.venue.needsGeocode ? `${near}% of the mapped local affinity sits within 5 km of the venue. ` : "") +
       (demo ? `The core crowd skews ${topBucket(demo.age)}.` : ""),
     pickRationales: top3.map((p) => ({
       artist: p.name,
-      why: `Affinity ${pct(p.affinity)}/100${p.popularity !== undefined ? `, popularity ${pct(p.popularity)}/100` : ""}. ` +
+      why:
+        `Affinity ${pct(p.affinity)}/100${p.popularity !== undefined ? `, popularity ${pct(p.popularity)}/100 (${FIT_WORDS[p.drawFit ?? "unknown"]})` : ""}. ` +
         (p.sharedTags.length ? `Shares ${p.sharedTags.slice(0, 3).join(", ")} with the venue's taste profile.` : "Adjacent to the venue's taste profile."),
     })),
     sponsorAngle: brands.length
-      ? `Lead with ${brands.join(", ")}: these brands score highest with this crowd in ${ws.venue.city.split(",")[0]}. Offer co-branded nights with ${ws.places[0]?.name ?? "a local partner"} as the pre-show spot.`
+      ? `Lead with ${brands.join(", ")}: these brands score highest with this crowd in ${cityShort}. Offer co-branded nights with ${ws.places[0]?.name ?? "a local partner"} as the pre-show spot.`
       : "No sponsor data yet.",
     author: "template",
   };
