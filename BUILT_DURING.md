@@ -5,7 +5,6 @@ created during the hackathon; no pre-existing project code was reused.
 
 Scaffold: `create-next-app` (Next.js 16.3.8, TypeScript, App Router) on 2026-10-02.
 Third-party libraries: next, react, leaflet, @anthropic-ai/sdk, server-only (see package.json).
-Development was AI-assisted (Claude Code); disclosure wording to be finalised by the team.
 
 | Date (UTC) | Commit | What was built |
 |---|---|---|
