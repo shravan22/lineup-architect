@@ -513,7 +513,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           {ws && ws.demographics.length > 0 && (
             <div className="panel">
               <h3>Audience profile {sample && <span className="badge badge-sample small">Sample</span>}</h3>
-              <p className="sub">Age and gender skew of fans compared with the average Qloo audience (0 = average).</p>
+              <p className="sub">Age and gender skew of fans compared with the average Qloo audience (Qloo affinity score: 0 = average, positive = over-indexes).</p>
               <div className="demo-grid">
                 {ws.demographics.map((d) => (
                   <figure key={d.entityId} className="demo">
@@ -615,7 +615,7 @@ function SkewRow({ label, v }: { label: string; v: number }) {
       </td>
       <td className="num">
         {v >= 0 ? "+" : ""}
-        {Math.round(v * 100)}%
+        {v.toFixed(2)}
       </td>
     </tr>
   );

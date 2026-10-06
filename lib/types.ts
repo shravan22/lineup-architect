@@ -137,6 +137,8 @@ export interface Workspace {
   heatmapSubject: string[];
   demographics: DemoProfile[];
   brands: BrandPick[];
+  /** Locality Qloo applied to the brand query, if any (brands may ignore signal.location). */
+  brandsLocality?: string;
   places: PlacePick[];
   pitch?: Pitch;
   band?: BandState;

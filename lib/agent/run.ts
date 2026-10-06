@@ -139,7 +139,7 @@ async function runScripted(c: Ctx) {
 
   if (!ws.picks.length) {
     const target = capacityBand(ws.venue.capacity);
-    thought(c, `A ${ws.venue.capacity}-cap room maps to Qloo popularity ${bandLabel(target)}. Rank acts inside that band, localised to ${ws.venue.city}.`);
+    thought(c, `A ${ws.venue.capacity}-cap room maps to Qloo popularity ${bandLabel(target)}. Rank acts inside that band, with ${ws.venue.city} as the location signal.`);
     await step("recommend_artists", { take: DEFAULT_TAKE }, by, c);
 
     // Too few fit: widen, at most twice.
@@ -250,7 +250,7 @@ export function livePlan(v: VenueInput): string[] {
     `Resolve ${v.headliners.map((h) => `"${h}"`).join(", ")} with Qloo /search, and disambiguate any duplicates`,
     ...(v.genreHint ? [`Look up genre tags for "${v.genreHint}" with Qloo /v2/tags`] : []),
     "Build the taste profile of those headliners (Qloo /v2/insights, urn:tag)",
-    `Rank acts in ${v.city} inside popularity band ${bandLabel(band)} for a ${v.capacity}-cap room, widening or narrowing if needed`,
+    `Rank acts (with ${v.city} as location signal) inside popularity band ${bandLabel(band)} for a ${v.capacity}-cap room, widening or narrowing if needed`,
     "Map local affinity, profile the audience, shortlist sponsor brands and partner spots (4 Qloo insights calls in parallel)",
     "Draft the booking pitch",
   ];

@@ -7,6 +7,13 @@
 // by hand. Venue names are fictional; artist, brand and place names are real public
 // names used only as examples. The UI labels every fixture-backed result "Sample".
 //
+// Shapes re-checked against the docs on 2026-10-05 (notes/qloo-docs-review.md):
+// entities carry type "urn:entity" + subtype (no `types` array), metadata under
+// `properties`, scores under `query`; tags from /v2/tags and urn:tag use
+// tag_id/subtype; heatmap and place responses echo the matched locality under
+// the top-level `query`. Artist and brand responses do NOT echo a locality,
+// because the Entity Type Parameter Guide does not list signal.location for them.
+//
 // One file per preset venue: fixtures/<venue-id>.json
 // Run: node scripts/make-fixtures.mjs
 import { createHash } from "node:crypto";
@@ -28,6 +35,10 @@ function id(name) {
 function hashUnit(s) {
   return parseInt(createHash("sha1").update(s).digest("hex").slice(0, 8), 16) / 0xffffffff;
 }
+function tagResult(name, type = "urn:tag:genre:music") {
+  const t = tag(name, type);
+  return { tag_id: t.id, name, types: ["urn:entity:artist"], subtype: type, tag_value: t.id, query: {} };
+}
 function tag(name, type = "urn:tag:genre:music") {
   const slug = name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   return { id: `${type}:${slug}`, name, type };
@@ -37,8 +48,8 @@ const artistEntity = (name, popularity, desc, tags, key = name) => ({
   entity_id: id(key),
   type: "urn:entity",
   subtype: "urn:entity:artist",
-  types: ["urn:entity:artist"],
   popularity,
+  disambiguation: name,
   properties: { short_description: desc },
   tags: tags.map((t) => tag(t)),
 });
@@ -266,14 +277,23 @@ const VENUES = [
   },
 ];
 
-for (const v of VENUES) {
+const CITY = {
+  "detroit-gasworks": "Detroit",
+  "austin-lantern": "Austin",
+  "brooklyn-lowtide": "Brooklyn",
+  "nashville-copperline": "Nashville",
+  "london-basement": "London",
+};
+
+for (const v0 of VENUES) {
+  const v = { ...v0, city: CITY[v0.id] };
   // Deterministic pseudo-random generator per venue.
   let seed = Math.floor(hashUnit(v.id) * 4294967296);
   const rand = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
 
   const search = {};
   for (const [q, hits] of Object.entries(v.search)) {
-    search[q] = { results: hits.map(([n, pop, desc, tags, key]) => artistEntity(n, pop, desc, tags, key)) };
+    search[q] = { success: true, duration: 0.1, results: hits.map(([n, pop, desc, tags, key]) => artistEntity(n, pop, desc, tags, key)) };
   }
 
   const artistEntities = v.artists.map(([name, aff, pop, desc, tags]) => ({
@@ -309,12 +329,12 @@ for (const v of VENUES) {
   const file = {
     _fixture: NOTE,
     search,
-    tags: { keywords: v.genreKeywords, response: { results: { tags: v.genreTags.map((n) => tag(n)) } } },
+    tags: { keywords: v.genreKeywords, response: { success: true, results: { tags: v.genreTags.map((n) => tagResult(n)) } } },
     insights: {
       tag: {
         success: true,
         results: {
-          tags: v.taste.map(([n, a]) => ({ tag_id: tag(n).id, name: n, types: ["urn:entity:artist"], subtype: "urn:tag:genre:music", query: { affinity: a } })),
+          tags: v.taste.map(([n, a]) => ({ ...tagResult(n), query: { affinity: a } })),
         },
       },
       artist: { success: true, results: { entities: artistEntities } },
@@ -328,14 +348,15 @@ for (const v of VENUES) {
             type: "urn:entity",
             subtype: "urn:entity:brand",
             popularity: pop,
-            properties: { short_description: cat },
-            tags: [{ id: `urn:tag:category:brand:${slug(cat)}`, name: cat, type: "urn:tag:category:brand" }],
+            properties: { description: cat },
+            tags: [{ id: `urn:tag:genre:brand:${slug(cat)}`, name: cat, type: "urn:tag:genre:brand" }],
             query: { affinity: aff },
           })),
         },
       },
       place: {
         success: true,
+        query: { locality: { signal: { entity_id: id(v.city), name: v.city, subtype: "urn:entity:locality" } } },
         results: {
           entities: v.places.map(([name, aff, addr, cat, lat, lng]) => ({
             name,
@@ -344,13 +365,19 @@ for (const v of VENUES) {
             subtype: "urn:entity:place",
             popularity: 0.5,
             location: { lat, lon: lng },
-            properties: { address: addr, short_description: cat },
+            properties: { address: addr, description: cat, geocode: { city: v.city.split(",")[0] } },
+            disambiguation: addr,
             tags: [{ id: `urn:tag:category:place:${slug(cat)}`, name: cat, type: "urn:tag:category:place" }],
             query: { affinity: aff },
           })),
         },
       },
-      heatmap: { success: true, results: { heatmap: heat } },
+      heatmap: {
+        success: true,
+        results: { heatmap: heat },
+        query: { localities: { filter: { entity_id: id(v.city), name: v.city, subtype: "urn:entity:locality" } } },
+        duration: 75,
+      },
     },
   };
   writeFileSync(join(outDir, `${v.id}.json`), JSON.stringify(file) + "\n");

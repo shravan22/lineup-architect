@@ -7,6 +7,10 @@ import { fixtureFor } from "./fixtures";
 // - Base URL: https://hackathon.api.qloo.com (hackathon keys only work here)
 // - Auth: X-Api-Key header, read from process.env.QLOO_API_KEY. Never sent to the browser.
 // - Endpoints used: /search, /v2/tags, /v2/insights (GET, query params only).
+// - Docs (checked 2026-10-05, notes/qloo-docs-review.md):
+//   https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide
+//   401 = wrong base URL or header, 403 = entity type not enabled, 400 = bad
+//   params (e.g. a location query that matches no locality), /search 404 = no hits.
 // - With no key (or QLOO_MODE=fixture) every call is answered from SAMPLE fixtures.
 
 const BASE_URL = process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
@@ -43,6 +47,13 @@ function clean(params: Params): Record<string, string> {
   return out;
 }
 
+const HINTS: Record<number, string> = {
+  401: " (key rejected: hackathon keys only work on hackathon.api.qloo.com with the X-Api-Key header)",
+  403: " (this entity type is not enabled for the key)",
+  400: " (bad request: check parameter values, e.g. the location query)",
+  429: " (rate limited)",
+};
+
 async function liveGet(pathname: string, params: Record<string, string>): Promise<unknown> {
   const url = new URL(pathname, BASE_URL);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
@@ -56,8 +67,10 @@ async function liveGet(pathname: string, params: Record<string, string>): Promis
         cache: "no-store",
       });
       if (res.ok) return await res.json();
+      // /search documents 404 as "No results": treat it as an empty hit list.
+      if (res.status === 404 && pathname === "/search") return { success: true, results: [] };
       // Do not echo the response body: it could contain request details.
-      lastErr = new QlooError(`Qloo ${pathname} returned HTTP ${res.status}`, res.status);
+      lastErr = new QlooError(`Qloo ${pathname} returned HTTP ${res.status}${HINTS[res.status] ?? ""}`, res.status);
       if (res.status !== 429 && res.status < 500) break;
     } catch (e) {
       lastErr = e;
@@ -107,8 +120,10 @@ export const qloo = {
   search: (query: string, type = "urn:entity:artist", take = 3, ctx?: QlooCtx) =>
     qlooGet("/search", { query, types: type, take }, ctx),
 
-  tags: (query: string, take = 5, ctx?: QlooCtx) =>
-    qlooGet("/v2/tags", { "filter.query": query, "filter.parents.types": "urn:entity:artist", take }, ctx),
+  // filter.tag.types=urn:tag:genre:music keeps the lookup to music genres (the tag
+  // type artists carry, per https://docs.qloo.com/reference/schema-taxonomy).
+  tags: (query: string, take = 5, ctx?: QlooCtx, tagType: string | undefined = "urn:tag:genre:music") =>
+    qlooGet("/v2/tags", { "filter.query": query, "filter.parents.types": "urn:entity:artist", "filter.tag.types": tagType, take }, ctx),
 
   insights: (params: Params, ctx?: QlooCtx) => qlooGet("/v2/insights", params, ctx),
 };

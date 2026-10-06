@@ -19,6 +19,7 @@ export interface RawEntity {
   affinity?: number;
   popularity?: number;
   description?: string;
+  disambiguation?: string;
   imageUrl?: string;
   address?: string;
   lat?: number;
@@ -33,25 +34,51 @@ export function parseTag(t: Any): TagInfo | null {
   return { id, name, type: str(t?.type) ?? str(t?.subtype), affinity: num(t?.query?.affinity) };
 }
 
+/** English short description: properties.short_description, else the `short_descriptions` [{value, languages}] array. */
+function shortDesc(e: Any): string | undefined {
+  const p = e?.properties;
+  const fromList = (l: Any) =>
+    Array.isArray(l) ? str(l.find((x: Any) => Array.isArray(x?.languages) && x.languages.includes("en"))?.value) : undefined;
+  return str(p?.short_description) ?? str(e?.short_description) ?? fromList(p?.short_descriptions) ?? str(p?.description) ?? str(e?.description);
+}
+
+// Field paths: the API examples nest metadata under `properties` and scores under
+// `query` (https://docs.qloo.com/reference/basic-insights-use-case); the Schema &
+// Taxonomy page shows a flattened view (top-level affinity, url, lat/lon). Accept both.
 export function parseEntity(e: Any): RawEntity | null {
   const entityId = str(e?.entity_id) ?? str(e?.id);
   const name = str(e?.name);
   if (!entityId || !name) return null;
   const types: string[] = Array.isArray(e?.types) ? e.types : [];
+  const g = e?.properties?.geocode;
   return {
     entityId,
     name,
     subtype: str(e?.subtype),
     types: [...types, ...(str(e?.subtype) ? [e.subtype] : [])],
-    affinity: num(e?.query?.affinity),
-    popularity: num(e?.popularity),
-    description: str(e?.properties?.short_description) ?? str(e?.properties?.description),
-    imageUrl: str(e?.properties?.image?.url),
-    address: str(e?.properties?.address),
-    lat: num(e?.location?.lat) ?? num(e?.properties?.geocode?.lat),
-    lng: num(e?.location?.lon) ?? num(e?.location?.lng) ?? num(e?.properties?.geocode?.lon),
+    affinity: num(e?.query?.affinity) ?? num(e?.affinity),
+    popularity: num(e?.popularity) ?? num(e?.properties?.popularity),
+    description: shortDesc(e),
+    disambiguation: str(e?.disambiguation),
+    imageUrl: str(e?.properties?.image?.url) ?? str(e?.url),
+    address: str(e?.properties?.address) ?? str(e?.address),
+    lat: num(e?.location?.lat) ?? num(e?.location?.latitude) ?? num(g?.lat) ?? num(g?.latitude) ?? num(e?.lat),
+    lng: num(e?.location?.lon) ?? num(e?.location?.lng) ?? num(e?.location?.longitude) ?? num(g?.lon) ?? num(g?.lng) ?? num(g?.longitude) ?? num(e?.lon),
     tags: (Array.isArray(e?.tags) ? e.tags : []).map(parseTag).filter(Boolean) as TagInfo[],
   };
+}
+
+/**
+ * The locality Qloo matched for a location query. Docs: a single
+ * filter.location.query / signal.location.query adds `query.locality.signal`
+ * (deep dive) or `query.localities.filter` (heatmap example). Absent means the
+ * location parameter was not applied (Qloo silently ignores params a filter.type
+ * does not support).
+ */
+export function matchedLocality(data: Any): string | undefined {
+  const q = data?.query ?? data?.results?.query;
+  const l = q?.locality?.signal ?? q?.locality?.filter ?? q?.localities?.signal ?? q?.localities?.filter;
+  return str(l?.name) ?? str(l?.disambiguation) ?? (l ? "matched" : undefined);
 }
 
 export function parseSearch(data: Any): RawEntity[] {

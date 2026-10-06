@@ -1,11 +1,12 @@
 import "server-only";
 import { bandLabel, capacityBand, drawFit, inBand } from "@/lib/band";
-import { qloo, type QlooCtx, type QlooResult } from "@/lib/qloo/client";
+import { qloo, QlooError, type QlooCtx, type QlooResult } from "@/lib/qloo/client";
 import {
   parseDemographics,
   parseEntities,
   parseHeatmap,
   parseSearch,
+  matchedLocality,
   parseTagList,
   toBrand,
   toPlace,
@@ -99,7 +100,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "recommend_artists",
     label: "Rank candidate acts",
     description:
-      "Rank artists by Qloo affinity to the past headliners and genre tags, localised to the venue's city, restricted to a Qloo popularity band (filter.popularity.min/max, 0..1 percentile). Defaults to the band for the venue's capacity. Returns how many acts fall inside the band. If fewer than 6 fit, call again with a wider band; if the band is crowded for a small room, you may lower popularity_max. Give a reason whenever you change the band.",
+      "Rank artists by Qloo affinity to the past headliners and genre tags (the venue's city is sent as a location signal; the result says whether Qloo applied it), restricted to a Qloo popularity band (filter.popularity.min/max, 0..1 percentile). Defaults to the band for the venue's capacity. Returns how many acts fall inside the band. If fewer than 6 fit, call again with a wider band; if the band is crowded for a small room, you may lower popularity_max. Give a reason whenever you change the band.",
     parameters: {
       type: "object",
       properties: {
@@ -133,7 +134,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "sponsor_brands",
     label: "Shortlist sponsor brands",
     description:
-      "Find brands with high affinity among fans of the headliners and the top candidates, in the venue's city (Qloo insights, filter.type=urn:entity:brand).",
+      "Find brands with high affinity among fans of the headliners and the top candidates (Qloo insights, filter.type=urn:entity:brand). The venue's city is sent as a location signal; the result says whether Qloo applied it.",
     parameters: { type: "object", properties: { take: { type: "number", description: "How many brands (3-10). Default 8." } } },
   },
   {
@@ -226,8 +227,31 @@ export function plausible(query: string, hits: RawEntity[]): RawEntity[] {
 }
 
 function toCandidate(h: RawEntity): PendingChoice["candidates"][number] {
-  return { entityId: h.entityId, name: h.name, popularity: h.popularity, description: h.description, tags: h.tags.map((t) => t.name) };
+  const description = h.description ?? (h.disambiguation && h.disambiguation !== h.name ? h.disambiguation : undefined);
+  return { entityId: h.entityId, name: h.name, popularity: h.popularity, description, tags: h.tags.map((t) => t.name) };
 }
+
+/**
+ * Insights call with signal.location.query. The Entity Type Parameter Guide
+ * (https://docs.qloo.com/reference/available-parameters-by-entity-type) does not
+ * list signal.location* for artist or brand, and Qloo silently ignores
+ * unsupported params, so we report whether Qloo echoed a matched locality
+ * instead of assuming the results are local. A 400 (no locality matched) is
+ * retried once without the location.
+ */
+async function insightsNearVenue(params: Record<string, string | number | undefined>, loc: string, ctx: QlooCtx) {
+  try {
+    const r = await qloo.insights({ ...params, "signal.location.query": loc }, ctx);
+    return { r, locality: matchedLocality(r.data), dropped: false };
+  } catch (e) {
+    if (!(e instanceof QlooError) || e.status !== 400) throw e;
+    const r = await qloo.insights(params, ctx);
+    return { r, locality: undefined, dropped: true };
+  }
+}
+
+const locNote = (x: { locality?: string; dropped: boolean }, loc: string) =>
+  x.locality ? `localised to ${x.locality}` : x.dropped ? `Qloo matched no locality for "${loc}", taste-wide` : "taste-wide, no locality applied";
 
 /**
  * Deterministic disambiguation used by the scripted planner (the LLM decides on
@@ -320,7 +344,9 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "find_genre_tags": {
       const q = String(args.query ?? ws.venue.genreHint);
-      const r = await qloo.tags(q, 5, ctx);
+      let r = await qloo.tags(q, 5, ctx);
+      // Fall back to any tag type if the music-genre namespace has no match.
+      if (!parseTagList(r.data).length) r = await qloo.tags(q, 5, ctx, undefined);
       const tags = parseTagList(r.data).slice(0, 3);
       ws.genreTags = tags;
       return {
@@ -335,6 +361,8 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
         {
           "filter.type": "urn:tag",
           "filter.parents.types": "urn:entity:artist",
+          // Genre tags only, so they line up with artist tags (type urn:tag:genre:music).
+          "filter.tag.types": "urn:tag:genre:music",
           "signal.interests.entities": seedIds(ws).join(","),
           take: 10,
         },
@@ -354,19 +382,20 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const target = ws.band?.target ?? capacityBand(ws.venue.capacity);
       let used: PopBand = { min: unit(args.popularity_min, target.min), max: unit(args.popularity_max, target.max) };
       if (used.max - used.min < 0.1) used = target;
-      const r = await qloo.insights(
+      const near = await insightsNearVenue(
         {
           "filter.type": "urn:entity:artist",
           "signal.interests.entities": seeds.join(","),
           "signal.interests.tags": ws.genreTags.map((t) => t.id).join(",") || undefined,
-          "signal.location.query": loc,
           "filter.exclude.entities": seeds.join(","),
           "filter.popularity.min": used.min,
           "filter.popularity.max": used.max,
           take,
         },
+        loc,
         ctx,
       );
+      const r = near.r;
       const tasteNames = new Set(ws.tasteTags.map((t) => t.name.toLowerCase()));
       const all: ArtistPick[] = parseEntities(r.data)
         .filter((e) => !seeds.includes(e.entityId))
@@ -399,7 +428,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           ? [{ title: `Popularity band ${bandLabel(prev)} -> ${bandLabel(used)}`, detail: String(args.reason).slice(0, 400) }]
           : undefined;
       return {
-        summary: `Band ${bandLabel(used)}${changed ? ` (room target ${bandLabel(target)})` : ""}: ${fitting} in band; top: ${picks
+        summary: `Band ${bandLabel(used)}${changed ? ` (room target ${bandLabel(target)})` : ""}, ${locNote(near, loc)}: ${fitting} in band; top: ${picks
           .slice(0, 3)
           .map((p) => `${p.name} ${pct(p.affinity)}`)
           .join(", ")}`,
@@ -409,6 +438,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           query_band: used,
           returned: picks.length,
           in_band: fitting,
+          location: locNote(near, loc),
           advice,
           acts: picks.map((p) => ({ name: p.name, affinity: p.affinity, popularity: p.popularity, draw_fit: p.drawFit, shared_tags: p.sharedTags })),
         }),
@@ -446,13 +476,12 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
     case "sponsor_brands": {
       const take = clampInt(args.take, 8, 3, 10);
       const ids = [...seedIds(ws), ...bookableFirst(ws.picks).slice(0, 3).map((p) => p.entityId)];
-      const r = await qloo.insights(
-        { "filter.type": "urn:entity:brand", "signal.interests.entities": ids.join(","), "signal.location.query": loc, take },
-        ctx,
-      );
+      const near = await insightsNearVenue({ "filter.type": "urn:entity:brand", "signal.interests.entities": ids.join(","), take }, loc, ctx);
+      const r = near.r;
       ws.brands = parseEntities(r.data).map(toBrand).sort((a, b) => b.affinity - a.affinity).slice(0, take);
+      ws.brandsLocality = near.locality;
       return {
-        summary: `${ws.brands.length} brands; top: ${ws.brands.slice(0, 3).map((b) => b.name).join(", ")}`,
+        summary: `${ws.brands.length} brands (${locNote(near, loc)}); top: ${ws.brands.slice(0, 3).map((b) => b.name).join(", ")}`,
         forModel: JSON.stringify(ws.brands.map((b) => ({ name: b.name, affinity: b.affinity, category: b.category }))),
         ...srcs(r),
       };
@@ -466,7 +495,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       );
       ws.places = parseEntities(r.data).map(toPlace).sort((a, b) => b.affinity - a.affinity).slice(0, take);
       return {
-        summary: `${ws.places.length} places; top: ${ws.places.slice(0, 3).map((p) => p.name).join(", ")}`,
+        summary: `${ws.places.length} places${matchedLocality(r.data) ? ` in ${matchedLocality(r.data)}` : ""}; top: ${ws.places.slice(0, 3).map((p) => p.name).join(", ")}`,
         forModel: JSON.stringify(ws.places.map((p) => ({ name: p.name, affinity: p.affinity, category: p.category }))),
         ...srcs(r),
       };
@@ -517,7 +546,9 @@ export function shareWithinKm(ws: Workspace, km: number): number {
 
 export function topBucket(age: Record<string, number>): string {
   const e = Object.entries(age).sort((a, b) => b[1] - a[1])[0];
-  return e ? `${e[0].replace(/_/g, " ")} (+${pct(e[1])}% vs. avg)` : "n/a";
+  // Demographic values are relative affinity scores (0 = average, + above, - below),
+  // not percentages: https://docs.qloo.com/reference/demographics-use-case
+  return e ? `${e[0].replace(/_/g, " ")} (${e[1] >= 0 ? "+" : ""}${e[1].toFixed(2)} vs. avg)` : "n/a";
 }
 
 const FIT_WORDS = { fits: "fits the room", stretch: "a stretch for the room", under: "may under-draw", unknown: "draw fit unknown" } as const;
@@ -544,7 +575,7 @@ export function templatePitch(ws: Workspace): Pitch {
         (p.sharedTags.length ? `Shares ${p.sharedTags.slice(0, 3).join(", ")} with the venue's taste profile.` : "Adjacent to the venue's taste profile."),
     })),
     sponsorAngle: brands.length
-      ? `Lead with ${brands.join(", ")}: these brands score highest with this crowd in ${cityShort}. Offer co-branded nights with ${ws.places[0]?.name ?? "a local partner"} as the pre-show spot.`
+      ? `Lead with ${brands.join(", ")}: these brands score highest with this crowd${ws.brandsLocality ? ` in ${cityShort}` : ""}. Offer co-branded nights with ${ws.places[0]?.name ?? "a local partner"} as the pre-show spot.`
       : "No sponsor data yet.",
     author: "template",
   };
