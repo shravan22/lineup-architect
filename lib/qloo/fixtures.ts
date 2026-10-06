@@ -42,7 +42,57 @@ function entitiesResponse(base: Any, entities: Any[]) {
   return { ...base, results: { ...base.results, entities } };
 }
 
-export function fixtureFor(set: string | undefined, pathname: string, params: Record<string, string>): unknown | null {
+const EXPLAIN_KEY = "signal.interests.entities";
+const round = (x: number) => Math.round(x * 1000) / 1000;
+
+/**
+ * feature.explainability for sample artist results. The fixture stores a score per
+ * possible seed (every search candidate). Like Qloo, only entities that were actually
+ * sent in signal.interests.entities get an entry; scores are renormalised to sum to 1
+ * and entries below 0.1 are dropped. The top-level aggregate (average influence over
+ * top 3 / 5 / 10 / all) is computed from the returned list.
+ */
+function withExplainability(base: Any, ents: Any[], signal: string[], requested: boolean) {
+  if (!requested) {
+    const stripped = ents.map((e) => ({ ...e, query: { ...e.query, explainability: undefined } }));
+    return entitiesResponse(base, stripped);
+  }
+  const ids = new Set(signal);
+  const out = ents.map((e) => {
+    const raw = ((e.query?.explainability?.[EXPLAIN_KEY] ?? []) as Any[]).filter((x) => ids.has(x.entity_id));
+    const total = raw.reduce((s, x) => s + x.score, 0);
+    const list = total
+      ? raw
+          .map((x) => ({ entity_id: x.entity_id, score: round(x.score / total) }))
+          .filter((x) => x.score >= 0.1)
+          .sort((a, b) => b.score - a.score)
+      : [];
+    return { ...e, query: { ...e.query, explainability: list.length ? { [EXPLAIN_KEY]: list } : undefined } };
+  });
+  const effect = (n: number) => {
+    const sub = out.slice(0, n);
+    return signal
+      .map((id) => ({
+        entity_id: id,
+        avg_score: round(
+          sub.reduce((s, e) => s + ((e.query.explainability?.[EXPLAIN_KEY] ?? []) as Any[]).find((x) => x.entity_id === id)?.score || 0, 0) /
+            Math.max(1, sub.length),
+        ),
+      }))
+      .sort((a, b) => b.avg_score - a.avg_score);
+  };
+  const agg = {
+    [EXPLAIN_KEY]: { effect_on_top3_recs: effect(3), effect_on_top5_recs: effect(5), effect_on_top10_recs: effect(10), effect_on_all_recs: effect(out.length) },
+  };
+  return { ...entitiesResponse(base, out), query: { ...base.query, explainability: agg } };
+}
+
+export function fixtureFor(
+  set: string | undefined,
+  pathname: string,
+  params: Record<string, string>,
+  opts: { noExplain?: boolean } = {},
+): unknown | null {
   const f = set ? SETS[set] : undefined;
   if (!f) return null;
   const take = params.take ? Number(params.take) : undefined;
@@ -67,7 +117,8 @@ export function fixtureFor(set: string | undefined, pathname: string, params: Re
       const ents = (f.insights.artist.results.entities as Any[])
         .filter((e) => !exclude.has(e.entity_id) && e.popularity >= min && e.popularity <= max)
         .slice(0, take ?? 20);
-      return entitiesResponse(f.insights.artist, ents);
+      const requested = params["feature.explainability"] === "true" && !opts.noExplain;
+      return withExplainability(f.insights.artist, ents, list(params["signal.interests.entities"]), requested);
     }
     case "urn:demographics": {
       const ids = new Set(list(params["signal.interests.entities"]));

@@ -4,6 +4,7 @@ import { qloo, QlooError, type QlooCtx, type QlooResult } from "@/lib/qloo/clien
 import {
   parseDemographics,
   parseEntities,
+  parseExplainSummary,
   parseHeatmap,
   parseSearch,
   matchedLocality,
@@ -12,7 +13,7 @@ import {
   toPlace,
   type RawEntity,
 } from "@/lib/qloo/normalize";
-import type { ArtistPick, DataSource, PendingChoice, Pitch, PopBand, Workspace } from "@/lib/types";
+import type { ArtistPick, DataSource, Driver, PendingChoice, Pitch, PopBand, UnavailableSection, Workspace } from "@/lib/types";
 
 // Agent tools. Each tool calls Qloo (or the labelled sample fixtures), writes
 // structured results into the shared Workspace (which the UI renders), and
@@ -42,6 +43,8 @@ export interface ToolOutcome {
   forModel: string; // compact result for the LLM
   sources: DataSource[];
   endpoints: string[];
+  /** True when Qloo refused the endpoint for this key (403); the run continues without it. */
+  unavailable?: boolean;
   /** Visible agent decisions made through this call (shown in the trace). */
   decisions?: { title: string; detail: string }[];
 }
@@ -250,6 +253,46 @@ async function insightsNearVenue(params: Record<string, string | number | undefi
   }
 }
 
+/**
+ * Runs a Qloo call for an optional section. A 403 means the key does not include
+ * this entity type (docs: "403 = entity type not enabled"); the section is marked
+ * unavailable instead of failing the run.
+ */
+async function optional<T>(section: UnavailableSection, ws: Workspace, call: () => Promise<T>): Promise<T | null> {
+  try {
+    return await call();
+  } catch (e) {
+    if (e instanceof QlooError && e.status === 403) {
+      if (!ws.unavailable.includes(section)) ws.unavailable = [...ws.unavailable, section];
+      return null;
+    }
+    throw e;
+  }
+}
+
+function unavailableOutcome(what: string, filterType: string, consequence: string, simulated = false): ToolOutcome {
+  return {
+    summary: `Unavailable on hackathon key: Qloo returned 403 for ${filterType}${simulated ? " (simulated in sample mode)" : ""}. ${consequence}`,
+    forModel: JSON.stringify({ unavailable: true, reason: `Qloo returned 403 (${filterType} not enabled for this key)`, next: `Do not retry ${what}; continue without it.` }),
+    sources: [],
+    endpoints: [`GET /v2/insights (${filterType})`],
+    unavailable: true,
+  };
+}
+
+/** Maps Qloo explainability entity ids to the resolved headliner names. */
+function drivers(list: { entityId: string; score: number }[] | undefined, ws: Workspace): Driver[] | undefined {
+  if (!list?.length) return undefined;
+  const names = new Map(ws.seeds.map((s) => [s.entityId, s.name]));
+  const out = list.filter((x) => names.has(x.entityId)).map((x) => ({ entityId: x.entityId, name: names.get(x.entityId)!, score: x.score }));
+  return out.length ? out : undefined;
+}
+
+/** "Moodymann 62%, Floating Points 38%" (scores are 0..1 normalised influence). */
+export function driverText(d: Driver[] | undefined, max = 3): string {
+  return (d ?? []).slice(0, max).map((x) => `${x.name} ${Math.round(x.score * 100)}%`).join(", ");
+}
+
 const locNote = (x: { locality?: string; dropped: boolean }, loc: string) =>
   x.locality ? `localised to ${x.locality}` : x.dropped ? `Qloo matched no locality for "${loc}", taste-wide` : "taste-wide, no locality applied";
 
@@ -283,7 +326,12 @@ export function chooseCandidate(ws: Workspace, choice: PendingChoice): { entityI
 
 export async function runTool(name: string, args: Args, ws: Workspace): Promise<ToolOutcome> {
   const loc = ws.venue.locationQuery;
-  const ctx: QlooCtx = { fixtureSet: ws.venue.fixtureSet };
+  const sim = ws.venue.simulate;
+  const ctx: QlooCtx = {
+    fixtureSet: ws.venue.fixtureSet,
+    simulateDenied: sim === "403" ? ["urn:demographics", "urn:tag"] : undefined,
+    simulateNoExplain: sim === "no-explain",
+  };
   switch (name) {
     case "locate_city": {
       const r = await qloo.search(loc, "urn:entity:locality", 3, ctx);
@@ -357,17 +405,19 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
     }
 
     case "taste_profile": {
-      const r = await qloo.insights(
+      const ids = seedIds(ws);
+      const r = await optional("taste_profile", ws, () => qloo.insights(
         {
           "filter.type": "urn:tag",
           "filter.parents.types": "urn:entity:artist",
           // Genre tags only, so they line up with artist tags (type urn:tag:genre:music).
           "filter.tag.types": "urn:tag:genre:music",
-          "signal.interests.entities": seedIds(ws).join(","),
+          "signal.interests.entities": ids.join(","),
           take: 10,
         },
         ctx,
-      );
+      ));
+      if (!r) return unavailableOutcome("taste_profile", "urn:tag", "Acts are ranked without the shared-tag check.", sim === "403");
       ws.tasteTags = parseTagList(r.data);
       return {
         summary: `Top tags: ${ws.tasteTags.slice(0, 4).map((t) => t.name).join(", ")}`,
@@ -390,6 +440,8 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           "filter.exclude.entities": seeds.join(","),
           "filter.popularity.min": used.min,
           "filter.popularity.max": used.max,
+          // Which input headliner drove each pick (normalised 0..1 per seed).
+          "feature.explainability": "true",
           take,
         },
         loc,
@@ -409,6 +461,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           tags: e.tags,
           sharedTags: e.tags.filter((t) => tasteNames.has(t.name.toLowerCase())).map((t) => t.name),
           drawFit: drawFit(e.popularity, target),
+          drivenBy: seeds.length > 1 ? drivers(e.explain, ws) : undefined,
         }));
       const picks = bookableFirst(all).slice(0, take);
       // Count against the queried band on our side too: Qloo silently ignores invalid params.
@@ -416,6 +469,10 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const changed = used.min !== target.min || used.max !== target.max;
       const prev = ws.band?.used ?? target;
       ws.picks = picks;
+      const agg = parseExplainSummary(r.data);
+      const aggDrivers = seeds.length > 1 ? drivers(agg?.drivers, ws) : undefined;
+      ws.explain = agg && aggDrivers ? { subset: agg.subset, drivers: aggDrivers } : undefined;
+      const explained = picks.filter((p) => p.drivenBy?.length).length;
       ws.band = { target, used, history: [...(ws.band?.history ?? []), `${bandLabel(used)}: ${fitting} act${fitting === 1 ? "" : "s"}`] };
       const advice =
         fitting < MIN_FIT
@@ -431,7 +488,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
         summary: `Band ${bandLabel(used)}${changed ? ` (room target ${bandLabel(target)})` : ""}, ${locNote(near, loc)}: ${fitting} in band; top: ${picks
           .slice(0, 3)
           .map((p) => `${p.name} ${pct(p.affinity)}`)
-          .join(", ")}`,
+          .join(", ")}${explained ? `; explainability on ${explained}/${picks.length}${ws.explain ? `, ${ws.explain.subset} driven by ${driverText(ws.explain.drivers)}` : ""}` : ""}`,
         forModel: JSON.stringify({
           capacity: ws.venue.capacity,
           target_band: target,
@@ -440,7 +497,16 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           in_band: fitting,
           location: locNote(near, loc),
           advice,
-          acts: picks.map((p) => ({ name: p.name, affinity: p.affinity, popularity: p.popularity, draw_fit: p.drawFit, shared_tags: p.sharedTags })),
+          explainability_note: "driven_by = Qloo feature.explainability: share of each past headliner's influence on the pick (0..1). Cite it in pick_rationales when present.",
+          headliner_influence: ws.explain ? { subset: ws.explain.subset, drivers: ws.explain.drivers.map((d) => ({ headliner: d.name, avg_score: d.score })) } : undefined,
+          acts: picks.map((p) => ({
+            name: p.name,
+            affinity: p.affinity,
+            popularity: p.popularity,
+            draw_fit: p.drawFit,
+            shared_tags: p.sharedTags,
+            driven_by: p.drivenBy?.map((d) => ({ headliner: d.name, score: d.score })),
+          })),
         }),
         decisions,
         ...srcs(r),
@@ -462,7 +528,8 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "audience_demographics": {
       const { ids } = pickIds(ws, args.artist_names);
-      const r = await qloo.insights({ "filter.type": "urn:demographics", "signal.interests.entities": ids.join(",") }, ctx);
+      const r = await optional("demographics", ws, () => qloo.insights({ "filter.type": "urn:demographics", "signal.interests.entities": ids.join(",") }, ctx));
+      if (!r) return unavailableOutcome("audience_demographics", "urn:demographics", "The audience section shows a note instead of age and gender skew.", sim === "403");
       const names = new Map(ws.picks.map((p) => [p.entityId, p.name]));
       ws.demographics = parseDemographics(r.data, names);
       const top = ws.demographics.map((d) => `${d.name}: ${topBucket(d.age)}`);
@@ -567,12 +634,18 @@ export function templatePitch(ws: Workspace): Pitch {
       `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}` +
       (ws.band ? `, all checked against a popularity band of ${bandLabel(ws.band.target)} for a ${ws.venue.capacity}-capacity room. ` : ". ") +
       (ws.heatmap.length && !ws.venue.needsGeocode ? `${near}% of the mapped local affinity sits within 5 km of the venue. ` : "") +
-      (demo ? `The core crowd skews ${topBucket(demo.age)}.` : ""),
+      (ws.explain ? `Qloo explainability: across the ${ws.explain.subset} picks, the pull comes from ${driverText(ws.explain.drivers)}. ` : "") +
+      (demo
+        ? `The core crowd skews ${topBucket(demo.age)}.`
+        : ws.unavailable.includes("demographics")
+          ? "Audience age and gender data is not available on this Qloo key."
+          : ""),
     pickRationales: top3.map((p) => ({
       artist: p.name,
       why:
         `Affinity ${pct(p.affinity)}/100${p.popularity !== undefined ? `, popularity ${pct(p.popularity)}/100 (${FIT_WORDS[p.drawFit ?? "unknown"]})` : ""}. ` +
-        (p.sharedTags.length ? `Shares ${p.sharedTags.slice(0, 3).join(", ")} with the venue's taste profile.` : "Adjacent to the venue's taste profile."),
+        (p.sharedTags.length ? `Shares ${p.sharedTags.slice(0, 3).join(", ")} with the venue's taste profile.` : "Adjacent to the venue's taste profile.") +
+        (p.drivenBy?.length ? ` Driven by ${driverText(p.drivenBy)} (Qloo explainability).` : ""),
     })),
     sponsorAngle: brands.length
       ? `Lead with ${brands.join(", ")}: these brands score highest with this crowd${ws.brandsLocality ? ` in ${cityShort}` : ""}. Offer co-branded nights with ${ws.places[0]?.name ?? "a local partner"} as the pre-show spot.`

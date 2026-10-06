@@ -196,3 +196,15 @@ button { font: inherit; cursor: pointer; }
 .needs-live { border: 2px solid #f0c36d; background: #fffaf0; }
 .needs-live .plan { margin: 0 0 0.75rem; padding-left: 1.25rem; display: grid; gap: 0.25rem; font-size: 0.92rem; }
 .banner.partial { margin: 0; }
+
+/* Qloo explainability and key-limited sections */
+.card-driven { font-size: 0.82rem; color: var(--muted); margin-top: 0.3rem; }
+.card-driven strong { color: var(--ink); font-weight: 600; }
+.driven-bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--line); margin-top: 0.25rem; max-width: 240px; }
+.driven-bar .seg { display: block; height: 100%; }
+.seg-0 { background: #5b2bd9; } .seg-1 { background: #a78bfa; } .seg-2 { background: #d6c9ff; }
+.explain-sum { font-size: 0.88rem; margin: 0.25rem 0 0.5rem; }
+.chip-driver { background: #efe9ff; color: var(--accent); }
+.unavail-note { background: #f3f2f7; border: 1px dashed #bcb8c9; color: var(--muted); border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.88rem; margin: 0.25rem 0 0.5rem; }
+.step-unavailable { border-style: dashed; background: #f8f7fb; }
+.src-unavailable { background: #f3f2f7; color: var(--muted); border: 1px dashed #bcb8c9; }

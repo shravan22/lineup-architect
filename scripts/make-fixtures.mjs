@@ -296,9 +296,23 @@ for (const v0 of VENUES) {
     search[q] = { success: true, duration: 0.1, results: hits.map(([n, pop, desc, tags, key]) => artistEntity(n, pop, desc, tags, key)) };
   }
 
+  // feature.explainability (SAMPLE): per result, which input headliner drove it,
+  // in the shape seen on the hackathon API: query.explainability["signal.interests.entities"]
+  // = [{ entity_id, score }]. Raw weight per possible seed (every search candidate) =
+  // (1 + tags shared with that seed) x a hash jitter; the fixture router keeps only the
+  // seeds actually signalled and renormalises to sum 1 (lib/qloo/fixtures.ts).
+  const seedCands = Object.values(v.search).flat().map(([n, , , tags, key]) => ({ eid: id(key ?? n), tags, key: key ?? n }));
+  const explainFor = (name, tags) => {
+    const raw = seedCands.map((c) => {
+      const shared = tags.filter((t) => c.tags.includes(t)).length;
+      return { entity_id: c.eid, w: (1 + 1.5 * shared) * (0.6 + 0.8 * hashUnit(name + "|" + c.key)) };
+    });
+    const total = raw.reduce((a, x) => a + x.w, 0);
+    return raw.map((x) => ({ entity_id: x.entity_id, score: +(x.w / total).toFixed(3) })).sort((a, b) => b.score - a.score);
+  };
   const artistEntities = v.artists.map(([name, aff, pop, desc, tags]) => ({
     ...artistEntity(name, pop, desc, tags),
-    query: { affinity: aff },
+    query: { affinity: aff, explainability: { "signal.interests.entities": explainFor(name, tags) } },
   }));
 
   const demographics = v.artists.map(([name]) => {
@@ -337,7 +351,11 @@ for (const v0 of VENUES) {
           tags: v.taste.map(([n, a]) => ({ ...tagResult(n), query: { affinity: a } })),
         },
       },
-      artist: { success: true, results: { entities: artistEntities } },
+      artist: {
+        success: true,
+        _explainability: "SAMPLE: per-result query.explainability scores are illustrative; the top-level aggregate is computed by the fixture router.",
+        results: { entities: artistEntities },
+      },
       demographics: { success: true, results: { demographics } },
       brand: {
         success: true,

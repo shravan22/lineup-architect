@@ -83,6 +83,19 @@ async function liveGet(pathname: string, params: Record<string, string>): Promis
 /** Which labelled sample fixture set answers calls in fixture mode (preset venues only). */
 export interface QlooCtx {
   fixtureSet?: string;
+  /**
+   * Sample mode only: filter.type values to answer with a simulated HTTP 403, as a
+   * hackathon key that lacks that entity type would (e.g. urn:demographics, urn:tag).
+   * Ignored in live mode.
+   */
+  simulateDenied?: string[];
+  /** Sample mode only: drop query.explainability from responses. */
+  simulateNoExplain?: boolean;
+}
+
+/** Filter types denied in sample mode via QLOO_FIXTURE_DENY (comma list), for testing. */
+export function envDenied(): string[] {
+  return (process.env.QLOO_FIXTURE_DENY ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 export async function qlooGet<T = unknown>(pathname: string, rawParams: Params, ctx: QlooCtx = {}): Promise<QlooResult<T>> {
@@ -91,7 +104,11 @@ export async function qlooGet<T = unknown>(pathname: string, rawParams: Params, 
   const endpoint = `GET ${pathname}`;
 
   if (qlooMode() === "fixture") {
-    const data = fixtureFor(ctx.fixtureSet, pathname, params);
+    const denied = [...envDenied(), ...(ctx.simulateDenied ?? [])];
+    if (pathname === "/v2/insights" && params["filter.type"] && denied.includes(params["filter.type"])) {
+      throw new QlooError(`Qloo ${pathname} returned HTTP 403${HINTS[403]} [simulated in sample mode]`, 403);
+    }
+    const data = fixtureFor(ctx.fixtureSet, pathname, params, { noExplain: ctx.simulateNoExplain });
     if (data === null) {
       throw new QlooError(
         "No sample data for this request. Sample mode only covers the five preset venues; add a Qloo API key for live data.",

@@ -1,5 +1,6 @@
 import { runAgent } from "@/lib/agent/run";
-import type { AgentEvent, VenueInput } from "@/lib/types";
+import { qlooMode } from "@/lib/qloo/client";
+import { SIMULATIONS, type AgentEvent, type Simulation, type VenueInput } from "@/lib/types";
 import { customVenue, SAMPLE_VENUES } from "@/lib/venues";
 
 // Streams agent events as NDJSON (one JSON object per line).
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  let body: { venueId?: unknown; custom?: unknown } = {};
+  let body: { venueId?: unknown; custom?: unknown; simulate?: unknown } = {};
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -27,6 +28,11 @@ export async function POST(req: Request) {
         { error: `Pick one of the preset venues (${SAMPLE_VENUES.map((v) => v.id).join(", ")}) or send a custom venue.` },
         { status: 422 },
       );
+  }
+
+  // Test scenarios (simulated 403s, missing explainability) only apply to sample data.
+  if (qlooMode() === "fixture" && SIMULATIONS.includes(body.simulate as Simulation)) {
+    venue = { ...venue, simulate: body.simulate as Simulation };
   }
 
   const encoder = new TextEncoder();

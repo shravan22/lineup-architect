@@ -25,6 +25,8 @@ export interface RawEntity {
   lat?: number;
   lng?: number;
   tags: TagInfo[];
+  /** Raw per-result explainability: input entity -> normalised score (0..1). */
+  explain?: { entityId: string; score: number }[];
 }
 
 export function parseTag(t: Any): TagInfo | null {
@@ -65,7 +67,54 @@ export function parseEntity(e: Any): RawEntity | null {
     lat: num(e?.location?.lat) ?? num(e?.location?.latitude) ?? num(g?.lat) ?? num(g?.latitude) ?? num(e?.lat),
     lng: num(e?.location?.lon) ?? num(e?.location?.lng) ?? num(e?.location?.longitude) ?? num(g?.lon) ?? num(g?.lng) ?? num(g?.longitude) ?? num(e?.lon),
     tags: (Array.isArray(e?.tags) ? e.tags : []).map(parseTag).filter(Boolean) as TagInfo[],
+    explain: parseResultExplain(e?.query?.explainability),
   };
+}
+
+// ---- feature.explainability ----
+// Docs (https://docs.qloo.com/reference/parameters, feature.explainability): each
+// result gets `query.explainability` listing which input entities (e.g.
+// signal.interests.entities) contributed, scores normalised 0..1; entities >= 0.1
+// are always included. The top-level `query.explainability` holds the average
+// influence per input entity over top-N subsets (top 3, 5, 10, all). If it cannot
+// be computed, `query.explainability.warning` is set and results return normally.
+// Key names below follow a recorded hackathon response in a public 2026 project
+// (Inference: "signal.interests.entities": [{entity_id, score}] per result and
+// effect_on_top{N}_recs: [{entity_id, avg_score}] at the top level). Verify live.
+
+function explainList(v: Any, scoreKey: "score" | "avg_score"): { entityId: string; score: number }[] {
+  if (!Array.isArray(v)) return [];
+  const out: { entityId: string; score: number }[] = [];
+  for (const x of v) {
+    const entityId = str(x?.entity_id) ?? str(x?.id);
+    const score = num(x?.[scoreKey]) ?? num(x?.score) ?? num(x?.avg_score);
+    if (entityId && score !== undefined) out.push({ entityId, score });
+  }
+  return out.sort((a, b) => b.score - a.score);
+}
+
+function parseResultExplain(x: Any): { entityId: string; score: number }[] | undefined {
+  if (!x || typeof x !== "object") return undefined;
+  const list = Array.isArray(x) ? explainList(x, "score") : explainList(x["signal.interests.entities"] ?? x.entities, "score");
+  return list.length ? list : undefined;
+}
+
+/** Top-level aggregate: prefers the top-5 subset, then top 3, top 10, all. */
+export function parseExplainSummary(data: Any): { subset: string; drivers: { entityId: string; score: number }[] } | undefined {
+  const x = data?.query?.explainability;
+  if (!x || typeof x !== "object" || x.warning) return undefined;
+  const sig = x["signal.interests.entities"] ?? x.entities;
+  if (!sig || typeof sig !== "object") return undefined;
+  for (const [key, subset] of [
+    ["effect_on_top5_recs", "top 5"],
+    ["effect_on_top3_recs", "top 3"],
+    ["effect_on_top10_recs", "top 10"],
+    ["effect_on_all_recs", "all"],
+  ] as const) {
+    const drivers = explainList(sig[key], "avg_score");
+    if (drivers.length) return { subset, drivers };
+  }
+  return undefined;
 }
 
 /**

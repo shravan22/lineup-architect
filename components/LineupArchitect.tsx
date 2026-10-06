@@ -17,7 +17,7 @@ interface Step {
   kind: "tool" | "thought" | "notice" | "decision";
   label: string;
   detail?: string;
-  status: "running" | "ok" | "error" | "info";
+  status: "running" | "ok" | "error" | "info" | "unavailable";
   by?: string;
   ms?: number;
   sources?: DataSource[];
@@ -91,7 +91,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       case "tool_end":
         setSteps((s) =>
           s.map((x) =>
-            x.id === e.id ? { ...x, status: e.ok ? "ok" : "error", detail: e.summary, ms: e.ms, sources: e.sources, endpoints: e.endpoints } : x,
+            x.id === e.id ? { ...x, status: e.unavailable ? "unavailable" : e.ok ? "ok" : "error", detail: e.summary, ms: e.ms, sources: e.sources, endpoints: e.endpoints } : x,
           ),
         );
         break;
@@ -129,6 +129,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     } else {
       payload = { venueId };
     }
+    // Sample-mode test scenarios: ?simulate=403 or ?simulate=no-explain (ignored live).
+    const simulate = new URLSearchParams(window.location.search).get("simulate");
+    if (simulate) payload = { ...payload, simulate };
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -349,11 +352,12 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   {s.kind === "tool" ? (
                     <>
                       <span className="step-icon" aria-hidden="true">
-                        {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : "!"}
+                        {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : s.status === "unavailable" ? "–" : "!"}
                       </span>
                       <div>
                         <div className="step-label">
                           {s.label}
+                          {s.status === "unavailable" && <span className="src src-unavailable">unavailable on hackathon key</span>}
                           {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
                           {s.sources?.map((src, i) => (
                             <span key={i} className={`src src-${src}`}>
@@ -450,6 +454,22 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   . Queries: {ws.band.history.join("; ")}. Acts that fit the room are listed first.
                 </p>
               )}
+              {ws.explain && (
+                <p className="explain-sum" title="Qloo feature.explainability: average influence of each past headliner on the recommendations">
+                  Qloo explainability, {ws.explain.subset} picks driven by:{" "}
+                  {ws.explain.drivers.map((d) => (
+                    <span key={d.entityId} className="chip chip-driver">
+                      {d.name} {Math.round(d.score * 100)}%
+                    </span>
+                  ))}
+                </p>
+              )}
+              {ws.unavailable.includes("taste_profile") && (
+                <p className="unavail-note" role="note">
+                  Venue taste profile unavailable on this Qloo key (urn:tag returned 403). Acts are ranked without the shared-tag check.
+                  {ws.venue.simulate === "403" && " (Simulated 403 in sample mode.)"}
+                </p>
+              )}
               {ws.tasteTags.length > 0 && (
                 <p className="taste">
                   Venue taste profile:{" "}
@@ -484,6 +504,22 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                         <span>Popularity {pct(p.popularity)}</span>
                       </div>
                       {p.sharedTags.length > 0 && <div className="card-tags">Shares: {p.sharedTags.join(", ")}</div>}
+                      {p.drivenBy && p.drivenBy.length > 0 && (
+                        <div className="card-driven" title="Qloo feature.explainability: how much each past headliner contributed to this recommendation">
+                          Driven by:{" "}
+                          {p.drivenBy.slice(0, 3).map((d, j) => (
+                            <span key={d.entityId}>
+                              {j > 0 && ", "}
+                              <strong>{d.name}</strong> {Math.round(d.score * 100)}%
+                            </span>
+                          ))}
+                          <span className="driven-bar" aria-hidden="true">
+                            {p.drivenBy.slice(0, 3).map((d, j) => (
+                              <i key={d.entityId} className={`seg seg-${j}`} style={{ width: `${Math.round(d.score * 100)}%` }} />
+                            ))}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -507,6 +543,17 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 <span><i className="dot venue-dot" />Venue</span>
                 <span><i className="dot place-dot" />Partner spot</span>
               </div>
+            </div>
+          )}
+
+          {ws && ws.demographics.length === 0 && ws.unavailable.includes("demographics") && (
+            <div className="panel">
+              <h3>Audience profile</h3>
+              <p className="unavail-note" role="note">
+                Unavailable on the hackathon key: Qloo answered 403 for audience demographics (urn:demographics), so age and gender
+                skew is not shown. The rest of the plan and the pitch do not depend on it.
+                {ws.venue.simulate === "403" && " (Simulated 403 in sample mode.)"}
+              </p>
             </div>
           )}
 

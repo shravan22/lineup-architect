@@ -57,7 +57,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 function emptyWorkspace(venue: VenueInput): Workspace {
-  return { venue, seeds: [], genreTags: [], tasteTags: [], picks: [], heatmap: [], heatmapSubject: [], demographics: [], brands: [], places: [], pending: [] };
+  return { venue, seeds: [], genreTags: [], tasteTags: [], picks: [], heatmap: [], heatmapSubject: [], demographics: [], brands: [], places: [], pending: [], unavailable: [] };
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -75,7 +75,7 @@ async function step(name: string, args: Record<string, unknown>, by: By, { ws, e
   const t0 = Date.now(); // timing excludes the sample-mode pacing pause
   try {
     const out = await withTimeout(runTool(name, args, ws), dl.left());
-    emit({ type: "tool_end", id, ok: true, summary: out.summary, ms: Date.now() - t0, sources: out.sources, endpoints: out.endpoints });
+    emit({ type: "tool_end", id, ok: true, unavailable: out.unavailable, summary: out.summary, ms: Date.now() - t0, sources: out.sources, endpoints: out.endpoints });
     for (const d of out.decisions ?? []) emit({ type: "decision", by, title: d.title, detail: d.detail });
     emit({ type: "workspace", workspace: ws });
     return { ok: true as const, content: out.forModel };
@@ -132,7 +132,7 @@ async function runScripted(c: Ctx) {
     return;
   }
 
-  if (!ws.tasteTags.length) {
+  if (!ws.tasteTags.length && !ws.unavailable.includes("taste_profile")) {
     thought(c, "Summarise the past headliners as a taste profile.");
     await step("taste_profile", {}, by, c);
   }
@@ -194,7 +194,7 @@ async function runScripted(c: Ctx) {
 
   const fan: [string, Record<string, unknown>][] = [];
   if (!ws.heatmap.length) fan.push(["audience_heatmap", {}]);
-  if (!ws.demographics.length) fan.push(["audience_demographics", {}]);
+  if (!ws.demographics.length && !ws.unavailable.includes("demographics")) fan.push(["audience_demographics", {}]);
   if (!ws.brands.length) fan.push(["sponsor_brands", { take: 8 }]);
   if (!ws.places.length) fan.push(["partner_places", { take: 6 }]);
   if (fan.length) {
@@ -236,6 +236,8 @@ function systemPrompt(v: VenueInput) {
     "- If search_artist reports several candidates, call resolve_headliner and pick the one that matches the venue's genre. Give a one-sentence reason.",
     `- The room's capacity maps to Qloo popularity ${bandLabel(band)} (0..1 percentile). recommend_artists uses it by default. If fewer than ${MIN_FIT} acts fit, widen the band and re-query. If the band is crowded and the room is small, you may lower popularity_max. Always give a reason when you change the band.`,
     "- Pick which acts to map and profile (default: the top 3 that fit the room).",
+    "- recommend_artists returns Qloo explainability (driven_by: which past headliner drove each act, 0..1). Cite it in pick_rationales when present.",
+    "- If a tool reports unavailable (HTTP 403, not enabled for this key), do not retry it; continue and finish the pitch without that section.",
     "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals.",
     `Venue: ${v.name}, ${v.city}, capacity ${v.capacity}. ${v.blurb}`,
     `Past headliners: ${v.headliners.join(", ")}.${v.genreHint ? ` Genre focus: ${v.genreHint}.` : ""}`,

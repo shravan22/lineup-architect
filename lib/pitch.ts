@@ -23,9 +23,16 @@ export function pitchMarkdown(ws: Workspace, meta: StatusInfo): string {
     ...p.pickRationales.map((r) => `- **${r.artist}:** ${r.why}`),
     "",
     "## Ranked shortlist",
-    "| # | Artist | Affinity | Popularity | Draw fit |",
-    "|---|---|---|---|---|",
-    ...ws.picks.map((a, i) => `| ${i + 1} | ${a.name} | ${pct(a.affinity)} | ${pct(a.popularity)} | ${DRAW_FIT_TEXT[a.drawFit ?? "unknown"].short} |`),
+    "| # | Artist | Affinity | Popularity | Draw fit | Driven by (Qloo explainability) |",
+    "|---|---|---|---|---|---|",
+    ...ws.picks.map(
+      (a, i) =>
+        `| ${i + 1} | ${a.name} | ${pct(a.affinity)} | ${pct(a.popularity)} | ${DRAW_FIT_TEXT[a.drawFit ?? "unknown"].short} | ${
+          a.drivenBy?.length ? a.drivenBy.slice(0, 3).map((d) => `${d.name} ${pct(d.score)}%`).join(", ") : "-"
+        } |`,
+    ),
+    ws.unavailable.includes("demographics") ? "\n_Audience demographics: unavailable on this Qloo key (HTTP 403)._" : "",
+    ws.unavailable.includes("taste_profile") ? "_Venue taste profile: unavailable on this Qloo key (HTTP 403)._" : "",
     "",
     "## Sponsor shortlist",
     ...ws.brands.map((b) => `- ${b.name} (${b.category ?? "brand"}), affinity ${pct(b.affinity)}`),

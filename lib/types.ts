@@ -24,7 +24,18 @@ export interface VenueInput {
   custom?: boolean;
   /** True when lat/lng are unknown and must be located via Qloo /search (live only). */
   needsGeocode?: boolean;
+  /** Sample-mode test scenario (ignored in live mode). See SIMULATIONS. */
+  simulate?: Simulation;
 }
+
+/**
+ * Sample-mode scenarios for testing degraded live conditions:
+ * - "403": urn:demographics and urn:tag insights answer HTTP 403, as on a hackathon
+ *   key without those entity types.
+ * - "no-explain": artist results come back without query.explainability.
+ */
+export type Simulation = "403" | "no-explain";
+export const SIMULATIONS: Simulation[] = ["403", "no-explain"];
 
 /** What the browser sends for a user-entered venue. Validated on the server. */
 export interface CustomVenueRequest {
@@ -83,7 +94,29 @@ export interface ArtistPick {
   sharedTags: string[]; // tag names shared with the venue taste profile
   shortDescription?: string;
   drawFit?: DrawFit;
+  /**
+   * Qloo feature.explainability: which input headliners drove this pick
+   * (result.query.explainability["signal.interests.entities"], scores 0..1).
+   * Absent when Qloo returns no explainability for the result.
+   */
+  drivenBy?: Driver[];
 }
+
+export interface Driver {
+  entityId: string;
+  name: string;
+  score: number; // 0..1, normalised by Qloo
+}
+
+/** Aggregate explainability (top-level query.explainability): average influence per seed. */
+export interface ExplainSummary {
+  /** e.g. "top5" -> drivers sorted by avg_score */
+  subset: string;
+  drivers: Driver[];
+}
+
+/** Agent step that the Qloo key is not allowed to call (HTTP 403). */
+export type UnavailableSection = "taste_profile" | "demographics";
 
 export interface HeatPoint {
   lat: number;
@@ -140,6 +173,10 @@ export interface Workspace {
   /** Locality Qloo applied to the brand query, if any (brands may ignore signal.location). */
   brandsLocality?: string;
   places: PlacePick[];
+  /** Aggregate Qloo explainability for the latest recommend_artists call. */
+  explain?: ExplainSummary;
+  /** Sections whose Qloo endpoint returned 403 for this key (shown as a note, not an error). */
+  unavailable: UnavailableSection[];
   pitch?: Pitch;
   band?: BandState;
   /** Headliner searches with more than one plausible artist, waiting for a decision. */
@@ -170,6 +207,8 @@ export type AgentEvent =
       type: "tool_end";
       id: string;
       ok: boolean;
+      /** True when Qloo refused the endpoint for this key (403): not an error, the run continues. */
+      unavailable?: boolean;
       summary: string;
       ms: number;
       sources: DataSource[];
