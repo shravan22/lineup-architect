@@ -186,7 +186,7 @@ export interface Workspace {
 }
 
 export interface LlmInfo {
-  provider: "anthropic" | "scripted";
+  provider: "anthropic" | "gemini" | "scripted";
   model?: string;
   label: string;
 }

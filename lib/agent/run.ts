@@ -3,7 +3,7 @@ import { bandLabel, capacityBand, narrowTop, widen } from "@/lib/band";
 import { qlooMode } from "@/lib/qloo/client";
 import { hasFixtures, recordedOn } from "@/lib/qloo/fixtures";
 import type { AgentEvent, LlmInfo, VenueInput, Workspace } from "@/lib/types";
-import { selectProvider, type Msg } from "./llm";
+import { isQuotaError, llmErrorText, selectProvider, type Msg } from "./llm";
 import { chooseCandidate, DEFAULT_TAKE, MIN_FIT, runTool, templatePitch, TOOL_LABELS, TOOL_SPECS } from "./tools";
 
 type Emit = (e: AgentEvent) => void;
@@ -19,7 +19,10 @@ const RESERVE_MS = 1_500;
 // streamed trace readable. It is not used in live mode.
 const FIXTURE_PACING_MS = 450;
 
-const SCRIPTED_INFO: LlmInfo = { provider: "scripted", label: "Scripted planner (no LLM key)" };
+const SCRIPTED_INFO: LlmInfo = {
+  provider: "scripted",
+  label: (process.env.LLM_PROVIDER ?? "").trim().toLowerCase() === "scripted" ? "Scripted planner (LLM_PROVIDER=scripted)" : "Scripted planner (no LLM key)",
+};
 
 export function llmInfo(): LlmInfo {
   return selectProvider()?.info ?? SCRIPTED_INFO;
@@ -297,7 +300,17 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
         if (!ws.pitch) emit({ type: "notice", text: `The model stopped before finishing (turn cap ${MAX_TURNS}). The scripted planner fills the remaining steps.` });
       } catch (e) {
         if (e instanceof OutOfTime) throw e;
-        emit({ type: "notice", text: `LLM unavailable (${e instanceof Error ? e.message : "error"}). Finishing with the scripted planner.` });
+        const quota = isQuotaError(e);
+        // The badge must show who is actually planning now.
+        emit({
+          type: "meta",
+          qlooMode: qlooMode(),
+          llm: { provider: "scripted", label: `Scripted planner (${provider.info.label} ${quota ? "quota reached" : "failed"})` },
+          recordedOn: recordedOn(),
+        });
+        if (!quota) emit({ type: "notice", text: `LLM unavailable (${provider.info.label}: ${llmErrorText(e)}). Finishing with the scripted planner.` });
+        if (!ws.pitch) await runScripted(c);
+        if (quota) emit({ type: "notice", text: `LLM quota reached (${provider.info.label}: ${llmErrorText(e)}), scripted planner finished the run.` });
       }
       if (!ws.pitch) await runScripted(c);
     }

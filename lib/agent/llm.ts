@@ -1,14 +1,17 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import type { LlmInfo } from "@/lib/types";
 import type { ToolSpec } from "./tools";
 
-// Provider-agnostic LLM interface for the tool-use loop. The one real provider
-// is Claude (Anthropic Messages API with tool use), read from env:
-//   ANTHROPIC_API_KEY   required for the LLM agent
-//   LLM_MODEL           optional override (default claude-haiku-4-5-20251001)
-//   LLM_PROVIDER=scripted forces the deterministic planner
-// With no key, the scripted planner in run.ts executes the same tool sequence.
+// Provider-agnostic LLM interface for the tool-use loop. Two real providers:
+//   Claude (Anthropic Messages API, tool use)      ANTHROPIC_API_KEY
+//   Gemini (@google/genai, function calling)       GEMINI_API_KEY
+//   LLM_PROVIDER   gemini | claude | scripted (optional). Unset: claude if
+//                  ANTHROPIC_API_KEY is set, else gemini if GEMINI_API_KEY is set,
+//                  else the deterministic scripted planner in run.ts.
+//   LLM_MODEL      optional model override for the selected provider
+// Keys are only read from env and never logged or sent to the browser.
 
 export interface ToolCall {
   id: string;
@@ -33,11 +36,85 @@ export interface LlmProvider {
 }
 
 export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+// Latest stable Flash model with a free tier, per https://ai.google.dev/gemini-api/docs/models
+// and /pricing (checked 2026-10-08).
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 
 export function selectProvider(): LlmProvider | null {
-  if ((process.env.LLM_PROVIDER ?? "").toLowerCase() === "scripted") return null;
+  const want = (process.env.LLM_PROVIDER ?? "").trim().toLowerCase();
+  if (want === "scripted") return null;
+  if (want === "gemini") return process.env.GEMINI_API_KEY ? gemini() : null;
+  if (want === "claude" || want === "anthropic") return process.env.ANTHROPIC_API_KEY ? claude() : null;
   if (process.env.ANTHROPIC_API_KEY) return claude();
+  if (process.env.GEMINI_API_KEY) return gemini();
   return null;
+}
+
+/** True for rate-limit / quota failures (HTTP 429, Gemini RESOURCE_EXHAUSTED). */
+export function isQuotaError(e: unknown): boolean {
+  const status = (e as { status?: unknown })?.status;
+  if (status === 429) return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return /\b429\b|RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(msg);
+}
+
+/** Short error text for the trace. Never includes request details or keys. */
+export function llmErrorText(e: unknown): string {
+  const status = (e as { status?: unknown })?.status;
+  if (typeof status === "number") return `HTTP ${status}`;
+  return e instanceof Error ? e.name || "error" : "error";
+}
+
+const LOCAL_ID = "local-call-";
+
+function gemini(): LlmProvider {
+  const model = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { timeout: 45_000 } });
+  let seq = 0;
+  const toContent = (m: Msg): Content => {
+    if (m.role === "user") return { role: "user", parts: [{ text: m.text }] };
+    if (m.role === "assistant") {
+      // Replay the model's own content so Gemini 3 thought signatures are kept.
+      if (m.raw) return m.raw as Content;
+      return {
+        role: "model",
+        parts: [...(m.text ? [{ text: m.text }] : []), ...m.toolCalls.map((c): Part => ({ functionCall: { id: c.id, name: c.name, args: c.args } }))],
+      };
+    }
+    return {
+      role: "user",
+      parts: m.results.map((r): Part => ({
+        functionResponse: { id: r.id.startsWith(LOCAL_ID) ? undefined : r.id, name: r.name, response: r.isError ? { error: r.content } : { output: r.content } },
+      })),
+    };
+  };
+  return {
+    info: { provider: "gemini", model, label: `Gemini (${model})` },
+    async next(system, messages, tools) {
+      const res = await ai.models.generateContent({
+        model,
+        contents: messages.map(toContent),
+        config: {
+          systemInstruction: system,
+          maxOutputTokens: 1500,
+          tools: [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }],
+        },
+      });
+      const content = res.candidates?.[0]?.content;
+      const parts = content?.parts ?? [];
+      const text = parts
+        .filter((p) => typeof p.text === "string" && !p.thought)
+        .map((p) => p.text)
+        .join("\n")
+        .trim();
+      const toolCalls = parts
+        .filter((p) => p.functionCall?.name)
+        // When Gemini gives no call id, use a local one for bookkeeping only (not sent back).
+        .map((p) => ({ id: p.functionCall!.id || `${LOCAL_ID}${++seq}`, name: p.functionCall!.name!, args: (p.functionCall!.args ?? {}) as Record<string, unknown> }));
+      // `raw` is the model's content unchanged (keeps thought signatures for the next turn).
+      return { text: text || undefined, toolCalls, raw: content };
+    },
+  };
 }
 
 function claude(): LlmProvider {
