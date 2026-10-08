@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local caches
 /.cache/
+
+# raw Qloo recordings (assembled into fixtures/ by scripts/record-fixtures.mjs)
+/.recordings/

@@ -1,5 +1,5 @@
 import "server-only";
-import { bandLabel, capacityBand, drawFit, inBand } from "@/lib/band";
+import { bandLabel, capacityBand, drawFit, inBand, MIN_BAND_WIDTH } from "@/lib/band";
 import { qloo, QlooError, type QlooCtx, type QlooResult } from "@/lib/qloo/client";
 import {
   parseDemographics,
@@ -15,7 +15,7 @@ import {
 } from "@/lib/qloo/normalize";
 import type { ArtistPick, DataSource, Driver, PendingChoice, Pitch, PopBand, UnavailableSection, Workspace } from "@/lib/types";
 
-// Agent tools. Each tool calls Qloo (or the labelled sample fixtures), writes
+// Agent tools. Each tool calls Qloo (or the labelled recorded Qloo responses), writes
 // structured results into the shared Workspace (which the UI renders), and
 // returns a compact text result for the model. Qloo facts live in the
 // Workspace; LLM text is only used for decisions and the pitch narrative.
@@ -85,7 +85,7 @@ export const TOOL_SPECS: ToolSpec[] = [
   {
     name: "find_genre_tags",
     label: "Look up genre tags",
-    description: "Find Qloo genre tag IDs for a genre phrase using Qloo /v2/tags. The tags are used as extra signal when recommending artists.",
+    description: "Find the Qloo genre tag for a genre phrase using Qloo /v2/tags. The tag is used to disambiguate headliners and to match acts to the venue's genre.",
     parameters: {
       type: "object",
       properties: { query: { type: "string", description: "Genre phrase, e.g. 'deep house'" } },
@@ -103,7 +103,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "recommend_artists",
     label: "Rank candidate acts",
     description:
-      "Rank artists by Qloo affinity to the past headliners and genre tags (the venue's city is sent as a location signal; the result says whether Qloo applied it), restricted to a Qloo popularity band (filter.popularity.min/max, 0..1 percentile). Defaults to the band for the venue's capacity. Returns how many acts fall inside the band. If fewer than 6 fit, call again with a wider band; if the band is crowded for a small room, you may lower popularity_max. Give a reason whenever you change the band.",
+      "Rank artists by Qloo affinity to the past headliners (the venue's city is sent as a location signal; the result says whether Qloo applied it), restricted to a Qloo popularity band (filter.popularity.min/max, 0..1 percentile). Defaults to the band for the venue's capacity. Returns how many acts fall inside the band. If fewer than 6 fit, call again with a wider band; if the band is crowded for a small room, you may lower popularity_max. Give a reason whenever you change the band.",
     parameters: {
       type: "object",
       properties: {
@@ -216,7 +216,7 @@ function clampInt(v: unknown, def: number, min: number, max: number) {
 
 function unit(v: unknown, def: number) {
   const n = typeof v === "number" && isFinite(v) ? v : def;
-  return Math.round(Math.min(1, Math.max(0, n)) * 100) / 100;
+  return Math.round(Math.min(1, Math.max(0, n)) * 1000) / 1000;
 }
 
 /** Search hits that plausibly refer to the query (same name, or one name contains the other). */
@@ -272,7 +272,7 @@ async function optional<T>(section: UnavailableSection, ws: Workspace, call: () 
 
 function unavailableOutcome(what: string, filterType: string, consequence: string, simulated = false): ToolOutcome {
   return {
-    summary: `Unavailable on hackathon key: Qloo returned 403 for ${filterType}${simulated ? " (simulated in sample mode)" : ""}. ${consequence}`,
+    summary: `Unavailable on hackathon key: Qloo returned 403 for ${filterType}${simulated ? " (simulated in recorded mode)" : ""}. ${consequence}`,
     forModel: JSON.stringify({ unavailable: true, reason: `Qloo returned 403 (${filterType} not enabled for this key)`, next: `Do not retry ${what}; continue without it.` }),
     sources: [],
     endpoints: [`GET /v2/insights (${filterType})`],
@@ -395,10 +395,15 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       let r = await qloo.tags(q, 5, ctx);
       // Fall back to any tag type if the music-genre namespace has no match.
       if (!parseTagList(r.data).length) r = await qloo.tags(q, 5, ctx, undefined);
-      const tags = parseTagList(r.data).slice(0, 3);
+      // /v2/tags is a fuzzy search ("deep house" also returns "Deephouse", "Deep Progressive
+      // House"): keep exact name matches (ignoring spaces and punctuation), else the top hit.
+      const key = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const found = parseTagList(r.data);
+      const exact = found.filter((t) => key(t.name) === key(q));
+      const tags = (exact.length ? exact : found).slice(0, 1);
       ws.genreTags = tags;
       return {
-        summary: tags.length ? `${tags.length} tags: ${tags.map((t) => t.name).join(", ")}` : `No tags for "${q}"`,
+        summary: tags.length ? `"${q}" -> ${tags.map((t) => `${t.name} (${t.id})`).join(", ")}` : `No tags for "${q}"`,
         forModel: JSON.stringify(tags.map((t) => ({ id: t.id, name: t.name }))),
         ...srcs(r),
       };
@@ -431,12 +436,14 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const seeds = seedIds(ws);
       const target = ws.band?.target ?? capacityBand(ws.venue.capacity);
       let used: PopBand = { min: unit(args.popularity_min, target.min), max: unit(args.popularity_max, target.max) };
-      if (used.max - used.min < 0.1) used = target;
+      if (used.max - used.min < MIN_BAND_WIDTH) used = target;
       const near = await insightsNearVenue(
         {
           "filter.type": "urn:entity:artist",
           "signal.interests.entities": seeds.join(","),
-          "signal.interests.tags": ws.genreTags.map((t) => t.id).join(",") || undefined,
+          // No signal.interests.tags: measured live on 2026-10-06, a tag signal adds 13-30 s
+          // to a cold call (25.3 s vs 0.7 s) and barely changes the ranking. Genre tags are
+          // used for disambiguation and the shared-tag check instead.
           "filter.exclude.entities": seeds.join(","),
           "filter.popularity.min": used.min,
           "filter.popularity.max": used.max,
@@ -448,6 +455,8 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
         ctx,
       );
       const r = near.r;
+      // Match on tag id (both use urn:tag:genre:music:*) or on the cleaned name.
+      const tasteIds = new Set(ws.tasteTags.map((t) => t.id));
       const tasteNames = new Set(ws.tasteTags.map((t) => t.name.toLowerCase()));
       const all: ArtistPick[] = parseEntities(r.data)
         .filter((e) => !seeds.includes(e.entityId))
@@ -459,7 +468,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           imageUrl: e.imageUrl,
           shortDescription: e.description,
           tags: e.tags,
-          sharedTags: e.tags.filter((t) => tasteNames.has(t.name.toLowerCase())).map((t) => t.name),
+          sharedTags: e.tags.filter((t) => tasteIds.has(t.id) || tasteNames.has(t.name.toLowerCase())).map((t) => t.name),
           drawFit: drawFit(e.popularity, target),
           drivenBy: seeds.length > 1 ? drivers(e.explain, ws) : undefined,
         }));
@@ -476,7 +485,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       ws.band = { target, used, history: [...(ws.band?.history ?? []), `${bandLabel(used)}: ${fitting} act${fitting === 1 ? "" : "s"}`] };
       const advice =
         fitting < MIN_FIT
-          ? `Only ${fitting} acts are inside ${bandLabel(used)}. Widen the band (e.g. +/-0.08) and call recommend_artists again.`
+          ? `Only ${fitting} acts are inside ${bandLabel(used)}. Widen the band (e.g. popularity_min -0.06, popularity_max +0.015) and call recommend_artists again.`
           : picks.length >= take && ws.venue.capacity <= 400 && !changed
             ? "The band is crowded for a small room. Consider lowering popularity_max so fees stay bookable."
             : "Enough acts fit the room.";
@@ -518,10 +527,10 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const r = await qloo.insights({ "filter.type": "urn:heatmap", "signal.interests.entities": ids.join(","), "filter.location.query": loc }, ctx);
       ws.heatmap = parseHeatmap(r.data);
       ws.heatmapSubject = names;
-      const near = shareWithinKm(ws, 5);
+      const hs = hotspots(ws);
       return {
-        summary: `${ws.heatmap.length} map cells for ${names.join(", ")}; ${near}% of affinity within 5 km of the venue`,
-        forModel: JSON.stringify({ cells: ws.heatmap.length, share_within_5km_pct: near, mapped: names }),
+        summary: `${ws.heatmap.length} map cells for ${names.join(", ")}${hs ? `; ${hs.hotPct}% of the hottest fifth of cells are within ${HOT_KM} km of ${anchor(ws)} (vs ${hs.allPct}% of all cells)` : ""}`,
+        forModel: JSON.stringify({ cells: ws.heatmap.length, hottest_fifth_within_2km_pct: hs?.hotPct, all_cells_within_2km_pct: hs?.allPct, mapped: names }),
         ...srcs(r),
       };
     }
@@ -601,14 +610,24 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-export function shareWithinKm(ws: Workspace, km: number): number {
-  if (ws.venue.needsGeocode) return 0;
-  const total = ws.heatmap.reduce((s, p) => s + p.affinity, 0);
-  if (!total) return 0;
-  const near = ws.heatmap
-    .filter((p) => haversineKm(ws.venue.lat, ws.venue.lng, p.lat, p.lng) <= km)
-    .reduce((s, p) => s + p.affinity, 0);
-  return Math.round((near / total) * 100);
+export const HOT_KM = 2;
+
+/** Custom venues are placed at the city centre (no street address), so say so. */
+const anchor = (ws: Workspace) => (ws.venue.custom ? "the city centre" : "the venue");
+
+/**
+ * Qloo heatmap affinity is rank-normalised (uniform 0..1) and the cells are clipped
+ * to the city, so a raw "share of affinity near the venue" mostly measures how many
+ * cells are near it (live Detroit: 85% of cells, 87% of affinity within 5 km).
+ * Instead compare the hottest fifth of cells with all cells: if hot cells sit near
+ * the venue more often than cells in general, the crowd is concentrated nearby.
+ */
+export function hotspots(ws: Workspace, km = HOT_KM): { hotPct: number; allPct: number } | undefined {
+  if (ws.venue.needsGeocode || ws.heatmap.length < 5) return undefined;
+  const near = (p: { lat: number; lng: number }) => haversineKm(ws.venue.lat, ws.venue.lng, p.lat, p.lng) <= km;
+  const hot = [...ws.heatmap].sort((a, b) => b.affinity - a.affinity).slice(0, Math.ceil(ws.heatmap.length / 5));
+  const pctOf = (l: { lat: number; lng: number }[]) => Math.round((l.filter(near).length / l.length) * 100);
+  return { hotPct: pctOf(hot), allPct: pctOf(ws.heatmap) };
 }
 
 export function topBucket(age: Record<string, number>): string {
@@ -624,19 +643,19 @@ const FIT_WORDS = { fits: "fits the room", stretch: "a stretch for the room", un
 export function templatePitch(ws: Workspace): Pitch {
   const top3 = bookableFirst(ws.picks).slice(0, 3);
   const a = top3[0];
-  const near = shareWithinKm(ws, 5);
+  const hs = hotspots(ws);
   const brands = ws.brands.slice(0, 3).map((x) => x.name);
-  const demo = ws.demographics[0];
+  const demo = ws.demographics.find((d) => d.entityId === a?.entityId) ?? ws.demographics[0];
   const cityShort = ws.venue.city.split(",")[0];
   return {
     headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest bookable taste fit for your next ${cityShort} headline night`,
     summary:
       `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}` +
       (ws.band ? `, all checked against a popularity band of ${bandLabel(ws.band.target)} for a ${ws.venue.capacity}-capacity room. ` : ". ") +
-      (ws.heatmap.length && !ws.venue.needsGeocode ? `${near}% of the mapped local affinity sits within 5 km of the venue. ` : "") +
+      (hs ? `${hs.hotPct}% of the hottest fifth of Qloo's ${cityShort} map cells sit within ${HOT_KM} km of ${anchor(ws)} (vs ${hs.allPct}% of all cells). ` : "") +
       (ws.explain ? `Qloo explainability: across the ${ws.explain.subset} picks, the pull comes from ${driverText(ws.explain.drivers)}. ` : "") +
       (demo
-        ? `The core crowd skews ${topBucket(demo.age)}.`
+        ? `${demo.name}'s crowd skews ${topBucket(demo.age)}.`
         : ws.unavailable.includes("demographics")
           ? "Audience age and gender data is not available on this Qloo key."
           : ""),

@@ -2,6 +2,7 @@ import "server-only";
 import type { DataSource, QlooMode } from "@/lib/types";
 import { cacheGet, cacheKey, cacheSet } from "./cache";
 import { fixtureFor } from "./fixtures";
+import { trimResponse } from "./trim";
 
 // Server-only Qloo client for the hackathon API.
 // - Base URL: https://hackathon.api.qloo.com (hackathon keys only work here)
@@ -11,11 +12,24 @@ import { fixtureFor } from "./fixtures";
 //   https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide
 //   401 = wrong base URL or header, 403 = entity type not enabled, 400 = bad
 //   params (e.g. a location query that matches no locality), /search 404 = no hits.
-// - With no key (or QLOO_MODE=fixture) every call is answered from SAMPLE fixtures.
+// - With no key (or QLOO_MODE=fixture) preset calls are answered from responses
+//   recorded from this API (fixtures/*.json, scripts/record-fixtures.mjs).
+// - Rate limit (response headers, 2026-10-06): 5 requests/second, 10,000/month.
 
 const BASE_URL = process.env.QLOO_BASE_URL ?? "https://hackathon.api.qloo.com";
-const TIMEOUT_MS = 12_000;
+// One cold insights call took 28 s on 2026-10-06; most take 0.3-3 s.
+const TIMEOUT_MS = 15_000;
 const MAX_ATTEMPTS = 2; // bounded retries, per the hackathon kit guidance
+// The key allows 5 requests per second; space request starts to stay under it.
+const MIN_GAP_MS = 220;
+let nextSlot = 0;
+
+async function throttle() {
+  const now = Date.now();
+  const at = Math.max(now, nextSlot);
+  nextSlot = at + MIN_GAP_MS;
+  if (at > now) await new Promise((r) => setTimeout(r, at - now));
+}
 
 export function qlooMode(): QlooMode {
   if (process.env.QLOO_MODE === "fixture") return "fixture";
@@ -60,6 +74,7 @@ async function liveGet(pathname: string, params: Record<string, string>): Promis
   let lastErr: unknown;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
+      await throttle();
       const res = await fetch(url, {
         method: "GET",
         headers: { "X-Api-Key": process.env.QLOO_API_KEY ?? "", accept: "application/json" },
@@ -75,7 +90,9 @@ async function liveGet(pathname: string, params: Record<string, string>): Promis
     } catch (e) {
       lastErr = e;
     }
-    if (attempt < MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, 600 * attempt));
+    // 429: the per-second window resets after 1 s.
+    const wait = lastErr instanceof QlooError && lastErr.status === 429 ? 1100 : 600 * attempt;
+    if (attempt < MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, wait));
   }
   throw lastErr instanceof Error ? lastErr : new QlooError(String(lastErr));
 }
@@ -121,13 +138,30 @@ export async function qlooGet<T = unknown>(pathname: string, rawParams: Params, 
   if (cached !== undefined) return { data: cached as T, source: "cache", endpoint };
 
   try {
-    const data = await liveGet(pathname, params);
+    const data = trimResponse(pathname, await liveGet(pathname, params));
     await cacheSet(key, data);
+    if (process.env.QLOO_RECORD_DIR) await record(ctx.fixtureSet ?? "custom", key, data);
     return { data: data as T, source: "live", endpoint };
   } catch (e) {
     const stale = await cacheGet(key, true);
     if (stale !== undefined) return { data: stale as T, source: "cache", endpoint };
     throw e;
+  }
+}
+
+/**
+ * Dev-only recorder (QLOO_RECORD_DIR set): appends each trimmed live response to
+ * <dir>/<fixtureSet>.ndjson. scripts/record-fixtures.mjs turns these into fixtures.
+ * Only the request path + params and the response body are written, never headers.
+ */
+async function record(set: string, key: string, data: unknown) {
+  try {
+    const { appendFile, mkdir } = await import("node:fs/promises");
+    const dir = process.env.QLOO_RECORD_DIR!;
+    await mkdir(dir, { recursive: true });
+    await appendFile(`${dir}/${set.replace(/[^a-z0-9-]/gi, "_")}.ndjson`, `${JSON.stringify({ key, data })}\n`);
+  } catch {
+    // recording is best-effort
   }
 }
 

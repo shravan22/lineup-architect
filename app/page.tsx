@@ -1,6 +1,7 @@
 import LineupArchitect from "@/components/LineupArchitect";
 import { llmInfo } from "@/lib/agent/run";
 import { qlooMode } from "@/lib/qloo/client";
+import { recordedOn } from "@/lib/qloo/fixtures";
 import { SAMPLE_VENUES } from "@/lib/venues";
 
 // Server component: reads which modes are active (never the key values) and
@@ -8,5 +9,5 @@ import { SAMPLE_VENUES } from "@/lib/venues";
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  return <LineupArchitect status={{ qlooMode: qlooMode(), llm: llmInfo() }} venues={SAMPLE_VENUES} />;
+  return <LineupArchitect status={{ qlooMode: qlooMode(), llm: llmInfo(), recordedOn: recordedOn() }} venues={SAMPLE_VENUES} />;
 }

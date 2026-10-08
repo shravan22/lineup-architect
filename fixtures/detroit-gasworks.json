@@ -1,1 +1,3641 @@
-{"_fixture":"SAMPLE DATA: hand-written fixture in the documented Qloo response shape. Not a live Qloo response.","search":{"moodymann":{"success":true,"duration":0.1,"results":[{"name":"Moodymann","entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.82,"disambiguation":"Moodymann","properties":{"short_description":"Detroit house producer and DJ"},"tags":[{"id":"urn:tag:genre:music:deep_house","name":"Deep House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:detroit_techno","name":"Detroit Techno","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:soul","name":"Soul","type":"urn:tag:genre:music"}]}]},"floating points":{"success":true,"duration":0.1,"results":[{"name":"Floating Points","entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.84,"disambiguation":"Floating Points","properties":{"short_description":"English electronic musician and producer"},"tags":[{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:nu_jazz","name":"Nu Jazz","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:ambient","name":"Ambient","type":"urn:tag:genre:music"}]}]},"jamie xx":{"success":true,"duration":0.1,"results":[{"name":"Jamie xx","entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.9,"disambiguation":"Jamie xx","properties":{"short_description":"English producer, DJ and member of The xx"},"tags":[{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:uk_garage","name":"UK Garage","type":"urn:tag:genre:music"}]},{"name":"The xx","entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.93,"disambiguation":"The xx","properties":{"short_description":"English indie pop band"},"tags":[{"id":"urn:tag:genre:music:indie_pop","name":"Indie Pop","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:dream_pop","name":"Dream Pop","type":"urn:tag:genre:music"}]}]}},"tags":{"keywords":["house","techno"],"response":{"success":true,"results":{"tags":[{"tag_id":"urn:tag:genre:music:deep_house","name":"Deep House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:deep_house","query":{}},{"tag_id":"urn:tag:genre:music:house","name":"House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:house","query":{}},{"tag_id":"urn:tag:genre:music:soulful_house","name":"Soulful House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:soulful_house","query":{}},{"tag_id":"urn:tag:genre:music:chicago_house","name":"Chicago House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:chicago_house","query":{}},{"tag_id":"urn:tag:genre:music:tech_house","name":"Tech House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:tech_house","query":{}}]}}},"insights":{"tag":{"success":true,"results":{"tags":[{"tag_id":"urn:tag:genre:music:deep_house","name":"Deep House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:deep_house","query":{"affinity":0.94}},{"tag_id":"urn:tag:genre:music:detroit_techno","name":"Detroit Techno","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:detroit_techno","query":{"affinity":0.91}},{"tag_id":"urn:tag:genre:music:electronic","name":"Electronic","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:electronic","query":{"affinity":0.89}},{"tag_id":"urn:tag:genre:music:house","name":"House","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:house","query":{"affinity":0.86}},{"tag_id":"urn:tag:genre:music:nu_jazz","name":"Nu Jazz","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:nu_jazz","query":{"affinity":0.78}},{"tag_id":"urn:tag:genre:music:ambient","name":"Ambient","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:ambient","query":{"affinity":0.72}},{"tag_id":"urn:tag:genre:music:soul","name":"Soul","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:soul","query":{"affinity":0.7}},{"tag_id":"urn:tag:genre:music:experimental","name":"Experimental","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:experimental","query":{"affinity":0.68}},{"tag_id":"urn:tag:genre:music:disco","name":"Disco","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:disco","query":{"affinity":0.66}},{"tag_id":"urn:tag:genre:music:broken_beat","name":"Broken Beat","types":["urn:entity:artist"],"subtype":"urn:tag:genre:music","tag_value":"urn:tag:genre:music:broken_beat","query":{"affinity":0.61}}]}},"artist":{"success":true,"_explainability":"SAMPLE: per-result query.explainability scores are illustrative; the top-level aggregate is computed by the fixture router.","results":{"entities":[{"name":"Theo Parrish","entity_id":"484C5E31-CF37-A753-CB7A-BE045DA15737","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.71,"disambiguation":"Theo Parrish","properties":{"short_description":"Detroit house producer and DJ"},"tags":[{"id":"urn:tag:genre:music:deep_house","name":"Deep House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:detroit_techno","name":"Detroit Techno","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:soul","name":"Soul","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:disco","name":"Disco","type":"urn:tag:genre:music"}],"query":{"affinity":0.93,"explainability":{"signal.interests.entities":[{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.622},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.134},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.124},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.12}]}}},{"name":"Four Tet","entity_id":"72AD8107-392C-D083-DB82-64924D02938B","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.88,"disambiguation":"Four Tet","properties":{"short_description":"English electronic musician"},"tags":[{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:ambient","name":"Ambient","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:experimental","name":"Experimental","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"}],"query":{"affinity":0.91,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.419},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.394},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.118},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.069}]}}},{"name":"Kerri Chandler","entity_id":"7CF98D8D-D035-8BF0-212E-CBCE723CCFD3","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.74,"disambiguation":"Kerri Chandler","properties":{"short_description":"American deep house producer and DJ"},"tags":[{"id":"urn:tag:genre:music:deep_house","name":"Deep House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:soul","name":"Soul","type":"urn:tag:genre:music"}],"query":{"affinity":0.89,"explainability":{"signal.interests.entities":[{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.39},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.369},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.139},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.102}]}}},{"name":"Caribou","entity_id":"40E8EEA6-FEA1-7C61-C10F-4352C5759803","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.86,"disambiguation":"Caribou","properties":{"short_description":"Canadian electronic musician"},"tags":[{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:experimental","name":"Experimental","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:psychedelic","name":"Psychedelic","type":"urn:tag:genre:music"}],"query":{"affinity":0.87,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.401},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.378},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.122},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.099}]}}},{"name":"Kyle Hall","entity_id":"C477F2D5-8BC5-4D97-EC98-0E611A97DAA2","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.45,"disambiguation":"Kyle Hall","properties":{"short_description":"Detroit house and techno producer"},"tags":[{"id":"urn:tag:genre:music:detroit_techno","name":"Detroit Techno","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:deep_house","name":"Deep House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:broken_beat","name":"Broken Beat","type":"urn:tag:genre:music"}],"query":{"affinity":0.85,"explainability":{"signal.interests.entities":[{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.533},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.165},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.162},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.141}]}}},{"name":"Kaytranada","entity_id":"99D683E2-5B82-D626-F232-14EDC030E4E8","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.9,"disambiguation":"Kaytranada","properties":{"short_description":"Haitian-Canadian producer and DJ"},"tags":[{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:randb","name":"R&B","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"}],"query":{"affinity":0.84,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.407},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.36},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.129},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.104}]}}},{"name":"Octo Octa","entity_id":"BE8051B1-4995-F847-8267-EE24BD123042","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.58,"disambiguation":"Octo Octa","properties":{"short_description":"American house producer and DJ"},"tags":[{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:breakbeat","name":"Breakbeat","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"}],"query":{"affinity":0.83,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.551},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.254},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.102},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.093}]}}},{"name":"Ross From Friends","entity_id":"45EE2C61-B081-3797-12AD-1D2C28124C20","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.62,"disambiguation":"Ross From Friends","properties":{"short_description":"English electronic producer"},"tags":[{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:lo_fi_house","name":"Lo-fi House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"}],"query":{"affinity":0.8,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.499},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.2},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.183},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.118}]}}},{"name":"Hunee","entity_id":"892B413C-55FF-01B7-D42F-2CAF25473725","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.48,"disambiguation":"Hunee","properties":{"short_description":"Berlin-based DJ and producer"},"tags":[{"id":"urn:tag:genre:music:disco","name":"Disco","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:soul","name":"Soul","type":"urn:tag:genre:music"}],"query":{"affinity":0.79,"explainability":{"signal.interests.entities":[{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.438},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.305},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.159},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.098}]}}},{"name":"Peggy Gou","entity_id":"A9F457E0-7FC5-A1B6-6446-6FBD187907B3","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.89,"disambiguation":"Peggy Gou","properties":{"short_description":"South Korean DJ and producer"},"tags":[{"id":"urn:tag:genre:music:house","name":"House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:techno","name":"Techno","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:electronic","name":"Electronic","type":"urn:tag:genre:music"}],"query":{"affinity":0.77,"explainability":{"signal.interests.entities":[{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.406},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.359},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.159},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.076}]}}},{"name":"Andrés","entity_id":"5BED0CA0-A531-8E53-096E-4BA09F9EB4E1","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.4,"disambiguation":"Andrés","properties":{"short_description":"Detroit producer and DJ"},"tags":[{"id":"urn:tag:genre:music:deep_house","name":"Deep House","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:soul","name":"Soul","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:hip_hop","name":"Hip Hop","type":"urn:tag:genre:music"}],"query":{"affinity":0.76,"explainability":{"signal.interests.entities":[{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.477},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.185},{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.175},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.164}]}}},{"name":"Kamaal Williams","entity_id":"EE5FED42-9DC1-4F30-6AE4-D6337D5C0005","type":"urn:entity","subtype":"urn:entity:artist","popularity":0.55,"disambiguation":"Kamaal Williams","properties":{"short_description":"English keyboardist and producer"},"tags":[{"id":"urn:tag:genre:music:nu_jazz","name":"Nu Jazz","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:broken_beat","name":"Broken Beat","type":"urn:tag:genre:music"},{"id":"urn:tag:genre:music:jazz_fusion","name":"Jazz Fusion","type":"urn:tag:genre:music"}],"query":{"affinity":0.74,"explainability":{"signal.interests.entities":[{"entity_id":"72D20103-C95E-F6EF-BE92-A6BD6FB302DB","score":0.433},{"entity_id":"60B6C308-C7FF-E1D0-AEBD-7CF772AD74FF","score":0.195},{"entity_id":"18A59789-458B-AEE5-C20F-90125D9CDB2C","score":0.193},{"entity_id":"154E08C0-0859-38FA-099C-EEDB1FA227B8","score":0.179}]}}}]}},"demographics":{"success":true,"results":{"demographics":[{"entity_id":"484C5E31-CF37-A753-CB7A-BE045DA15737","query":{"age":{"24_and_younger":0,"25_to_29":0.29,"30_to_34":0.35,"35_to_44":0.11,"45_to_54":-0.27,"55_and_older":-0.54},"gender":{"male":0.2,"female":-0.2}}},{"entity_id":"72AD8107-392C-D083-DB82-64924D02938B","query":{"age":{"24_and_younger":0.08,"25_to_29":0.29,"30_to_34":0.36,"35_to_44":0.11,"45_to_54":-0.21,"55_and_older":-0.46},"gender":{"male":0.15,"female":-0.15}}},{"entity_id":"7CF98D8D-D035-8BF0-212E-CBCE723CCFD3","query":{"age":{"24_and_younger":0.03,"25_to_29":0.38,"30_to_34":0.4,"35_to_44":0.08,"45_to_54":-0.17,"55_and_older":-0.59},"gender":{"male":0.16,"female":-0.16}}},{"entity_id":"40E8EEA6-FEA1-7C61-C10F-4352C5759803","query":{"age":{"24_and_younger":0.01,"25_to_29":0.23,"30_to_34":0.31,"35_to_44":0.09,"45_to_54":-0.31,"55_and_older":-0.58},"gender":{"male":0.1,"female":-0.1}}},{"entity_id":"C477F2D5-8BC5-4D97-EC98-0E611A97DAA2","query":{"age":{"24_and_younger":0.01,"25_to_29":0.33,"30_to_34":0.25,"35_to_44":0.13,"45_to_54":-0.31,"55_and_older":-0.6},"gender":{"male":0.09,"female":-0.09}}},{"entity_id":"99D683E2-5B82-D626-F232-14EDC030E4E8","query":{"age":{"24_and_younger":0.1,"25_to_29":0.27,"30_to_34":0.26,"35_to_44":0.17,"45_to_54":-0.28,"55_and_older":-0.51},"gender":{"male":0.04,"female":-0.04}}},{"entity_id":"BE8051B1-4995-F847-8267-EE24BD123042","query":{"age":{"24_and_younger":0.02,"25_to_29":0.26,"30_to_34":0.3,"35_to_44":0.08,"45_to_54":-0.26,"55_and_older":-0.53},"gender":{"male":0.16,"female":-0.16}}},{"entity_id":"45EE2C61-B081-3797-12AD-1D2C28124C20","query":{"age":{"24_and_younger":-0.01,"25_to_29":0.31,"30_to_34":0.28,"35_to_44":0.11,"45_to_54":-0.32,"55_and_older":-0.53},"gender":{"male":0.11,"female":-0.11}}},{"entity_id":"892B413C-55FF-01B7-D42F-2CAF25473725","query":{"age":{"24_and_younger":0.06,"25_to_29":0.34,"30_to_34":0.26,"35_to_44":0.14,"45_to_54":-0.28,"55_and_older":-0.56},"gender":{"male":0.13,"female":-0.13}}},{"entity_id":"A9F457E0-7FC5-A1B6-6446-6FBD187907B3","query":{"age":{"24_and_younger":0.09,"25_to_29":0.35,"30_to_34":0.3,"35_to_44":0.04,"45_to_54":-0.2,"55_and_older":-0.59},"gender":{"male":0.13,"female":-0.13}}},{"entity_id":"5BED0CA0-A531-8E53-096E-4BA09F9EB4E1","query":{"age":{"24_and_younger":0.06,"25_to_29":0.37,"30_to_34":0.37,"35_to_44":0.04,"45_to_54":-0.24,"55_and_older":-0.53},"gender":{"male":0.13,"female":-0.13}}},{"entity_id":"EE5FED42-9DC1-4F30-6AE4-D6337D5C0005","query":{"age":{"24_and_younger":0.01,"25_to_29":0.25,"30_to_34":0.31,"35_to_44":0.12,"45_to_54":-0.29,"55_and_older":-0.45},"gender":{"male":0.19,"female":-0.19}}}]}},"brand":{"success":true,"results":{"entities":[{"name":"Carhartt WIP","entity_id":"D764CCA0-6D0D-F07C-D8A6-75DAD800EC32","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.74,"properties":{"description":"Apparel"},"tags":[{"id":"urn:tag:genre:brand:apparel","name":"Apparel","type":"urn:tag:genre:brand"}],"query":{"affinity":0.92}},{"name":"Shinola","entity_id":"9A19AD6F-A5DE-1D6A-A29E-58E71509F03B","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.61,"properties":{"description":"Watches & leather goods"},"tags":[{"id":"urn:tag:genre:brand:watches_leather_goods","name":"Watches & leather goods","type":"urn:tag:genre:brand"}],"query":{"affinity":0.88}},{"name":"Bandcamp","entity_id":"6FA7E7EE-68DC-F7C1-0199-8AAD91FB21CE","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.66,"properties":{"description":"Music platform"},"tags":[{"id":"urn:tag:genre:brand:music_platform","name":"Music platform","type":"urn:tag:genre:brand"}],"query":{"affinity":0.86}},{"name":"Ableton","entity_id":"0A11C76B-94E2-C455-15A9-49377204A6A1","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.58,"properties":{"description":"Music software"},"tags":[{"id":"urn:tag:genre:brand:music_software","name":"Music software","type":"urn:tag:genre:brand"}],"query":{"affinity":0.84}},{"name":"Del Maguey","entity_id":"18B4AA71-A4A6-FA96-B18D-2F2C670C06A3","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.39,"properties":{"description":"Mezcal"},"tags":[{"id":"urn:tag:genre:brand:mezcal","name":"Mezcal","type":"urn:tag:genre:brand"}],"query":{"affinity":0.79}},{"name":"Topo Chico","entity_id":"93312692-A57D-BDA7-C85E-7666DB8866F1","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.81,"properties":{"description":"Sparkling water"},"tags":[{"id":"urn:tag:genre:brand:sparkling_water","name":"Sparkling water","type":"urn:tag:genre:brand"}],"query":{"affinity":0.77}},{"name":"Aesop","entity_id":"1595C105-D0CB-F47E-1221-6ACB3D2FA50C","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.57,"properties":{"description":"Skincare"},"tags":[{"id":"urn:tag:genre:brand:skincare","name":"Skincare","type":"urn:tag:genre:brand"}],"query":{"affinity":0.73}},{"name":"Patagonia","entity_id":"6CF4B562-8766-846F-34D8-B5A9DFEDC76C","type":"urn:entity","subtype":"urn:entity:brand","popularity":0.87,"properties":{"description":"Outdoor apparel"},"tags":[{"id":"urn:tag:genre:brand:outdoor_apparel","name":"Outdoor apparel","type":"urn:tag:genre:brand"}],"query":{"affinity":0.7}}]}},"place":{"success":true,"query":{"locality":{"signal":{"entity_id":"5E01746F-8BA0-D37B-E53E-C0A27136A8E5","name":"Detroit","subtype":"urn:entity:locality"}}},"results":{"entities":[{"name":"Spot Lite","entity_id":"701C4480-3E61-2E58-522F-5E22F99614A9","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3561,"lon":-83.0313},"properties":{"address":"2905 Beaufait St, Detroit, MI","description":"Bar","geocode":{"city":"Detroit"}},"disambiguation":"2905 Beaufait St, Detroit, MI","tags":[{"id":"urn:tag:category:place:bar","name":"Bar","type":"urn:tag:category:place"}],"query":{"affinity":0.9}},{"name":"Marble Bar","entity_id":"2EB71D2C-B4D2-F945-87CE-EF3180DE3316","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3685,"lon":-83.0806},"properties":{"address":"1501 Holden St, Detroit, MI","description":"Bar & club","geocode":{"city":"Detroit"}},"disambiguation":"1501 Holden St, Detroit, MI","tags":[{"id":"urn:tag:category:place:bar_club","name":"Bar & club","type":"urn:tag:category:place"}],"query":{"affinity":0.88}},{"name":"Motor City Wine","entity_id":"CFE274B1-55AB-CCF5-5BDD-8E88E01407C9","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3311,"lon":-83.0719},"properties":{"address":"1949 Michigan Ave, Detroit, MI","description":"Wine bar","geocode":{"city":"Detroit"}},"disambiguation":"1949 Michigan Ave, Detroit, MI","tags":[{"id":"urn:tag:category:place:wine_bar","name":"Wine bar","type":"urn:tag:category:place"}],"query":{"affinity":0.84}},{"name":"Third Man Records Cass Corridor","entity_id":"A7BB8382-8E0F-A120-0929-FB279D77AFF8","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3513,"lon":-83.0661},"properties":{"address":"441 W Canfield St, Detroit, MI","description":"Record store","geocode":{"city":"Detroit"}},"disambiguation":"441 W Canfield St, Detroit, MI","tags":[{"id":"urn:tag:category:place:record_store","name":"Record store","type":"urn:tag:category:place"}],"query":{"affinity":0.81}},{"name":"Detroit City Distillery","entity_id":"EDD42AFF-F2DE-9B7B-D393-1CA9C408B9CB","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3467,"lon":-83.0412},"properties":{"address":"2462 Riopelle St, Detroit, MI","description":"Distillery","geocode":{"city":"Detroit"}},"disambiguation":"2462 Riopelle St, Detroit, MI","tags":[{"id":"urn:tag:category:place:distillery","name":"Distillery","type":"urn:tag:category:place"}],"query":{"affinity":0.78}},{"name":"Eastern Market","entity_id":"66D08726-3827-C1A5-6CF6-D78A69133B09","type":"urn:entity","subtype":"urn:entity:place","popularity":0.5,"location":{"lat":42.3473,"lon":-83.0413},"properties":{"address":"2934 Russell St, Detroit, MI","description":"Market","geocode":{"city":"Detroit"}},"disambiguation":"2934 Russell St, Detroit, MI","tags":[{"id":"urn:tag:category:place:market","name":"Market","type":"urn:tag:category:place"}],"query":{"affinity":0.74}}]}},"heatmap":{"success":true,"results":{"heatmap":[{"location":{"latitude":42.3453,"longitude":-83.082,"geohash":"dpsbvk"},"query":{"affinity":0.909,"affinity_rank":0.939,"popularity":0.803}},{"location":{"latitude":42.3172,"longitude":-83.07,"geohash":"dpsbtx"},"query":{"affinity":0.981,"affinity_rank":0.99,"popularity":0.517}},{"location":{"latitude":42.3414,"longitude":-83.0591,"geohash":"dpsbvu"},"query":{"affinity":0.925,"affinity_rank":0.955,"popularity":0.476}},{"location":{"latitude":42.3426,"longitude":-83.0792,"geohash":"dpsbvk"},"query":{"affinity":0.889,"affinity_rank":0.919,"popularity":0.529}},{"location":{"latitude":42.333,"longitude":-83.0597,"geohash":"dpsbvf"},"query":{"affinity":0.964,"affinity_rank":0.99,"popularity":0.762}},{"location":{"latitude":42.3305,"longitude":-83.0491,"geohash":"dpsby4"},"query":{"affinity":0.887,"affinity_rank":0.917,"popularity":0.567}},{"location":{"latitude":42.3217,"longitude":-83.0773,"geohash":"dpsbv8"},"query":{"affinity":0.93,"affinity_rank":0.96,"popularity":0.67}},{"location":{"latitude":42.3276,"longitude":-83.0598,"geohash":"dpsbvc"},"query":{"affinity":0.981,"affinity_rank":0.99,"popularity":0.693}},{"location":{"latitude":42.3162,"longitude":-83.0519,"geohash":"dpsbwp"},"query":{"affinity":0.881,"affinity_rank":0.911,"popularity":0.59}},{"location":{"latitude":42.3351,"longitude":-83.0738,"geohash":"dpsbvd"},"query":{"affinity":0.903,"affinity_rank":0.933,"popularity":0.639}},{"location":{"latitude":42.3428,"longitude":-83.0693,"geohash":"dpsbvs"},"query":{"affinity":0.895,"affinity_rank":0.925,"popularity":0.828}},{"location":{"latitude":42.3385,"longitude":-83.0735,"geohash":"dpsbve"},"query":{"affinity":0.927,"affinity_rank":0.957,"popularity":0.612}},{"location":{"latitude":42.3505,"longitude":-83.0484,"geohash":"dpsbyj"},"query":{"affinity":0.898,"affinity_rank":0.928,"popularity":0.785}},{"location":{"latitude":42.3525,"longitude":-83.0474,"geohash":"dpsbyn"},"query":{"affinity":0.847,"affinity_rank":0.877,"popularity":0.341}},{"location":{"latitude":42.3397,"longitude":-83.0657,"geohash":"dpsbvg"},"query":{"affinity":0.94,"affinity_rank":0.97,"popularity":0.57}},{"location":{"latitude":42.3597,"longitude":-83.0538,"geohash":"dpsbyp"},"query":{"affinity":0.954,"affinity_rank":0.984,"popularity":0.559}},{"location":{"latitude":42.3462,"longitude":-83.0772,"geohash":"dpsbvs"},"query":{"affinity":0.851,"affinity_rank":0.881,"popularity":0.851}},{"location":{"latitude":42.3439,"longitude":-83.0808,"geohash":"dpsbvk"},"query":{"affinity":0.851,"affinity_rank":0.881,"popularity":0.323}},{"location":{"latitude":42.339,"longitude":-83.0682,"geohash":"dpsbve"},"query":{"affinity":0.866,"affinity_rank":0.896,"popularity":0.343}},{"location":{"latitude":42.3577,"longitude":-83.0551,"geohash":"dpsbyn"},"query":{"affinity":0.899,"affinity_rank":0.929,"popularity":0.369}},{"location":{"latitude":42.3585,"longitude":-83.045,"geohash":"dpsbyr"},"query":{"affinity":0.815,"affinity_rank":0.845,"popularity":0.537}},{"location":{"latitude":42.3503,"longitude":-83.0527,"geohash":"dpsbyj"},"query":{"affinity":0.799,"affinity_rank":0.829,"popularity":0.512}},{"location":{"latitude":42.3395,"longitude":-83.0299,"geohash":"dpsbye"},"query":{"affinity":0.85,"affinity_rank":0.88,"popularity":0.858}},{"location":{"latitude":42.3404,"longitude":-83.0323,"geohash":"dpsbye"},"query":{"affinity":0.79,"affinity_rank":0.82,"popularity":0.674}},{"location":{"latitude":42.3378,"longitude":-83.0229,"geohash":"dpsbyg"},"query":{"affinity":0.897,"affinity_rank":0.927,"popularity":0.473}},{"location":{"latitude":42.3326,"longitude":-83.0559,"geohash":"dpsby4"},"query":{"affinity":0.844,"affinity_rank":0.874,"popularity":0.754}},{"location":{"latitude":42.3924,"longitude":-83.0402,"geohash":"dpscnm"},"query":{"affinity":0.831,"affinity_rank":0.861,"popularity":0.725}},{"location":{"latitude":42.4086,"longitude":-83.0661,"geohash":"dpscmb"},"query":{"affinity":0.834,"affinity_rank":0.864,"popularity":0.54}},{"location":{"latitude":42.4105,"longitude":-83.0606,"geohash":"dpscmb"},"query":{"affinity":0.866,"affinity_rank":0.896,"popularity":0.41}},{"location":{"latitude":42.3927,"longitude":-83.051,"geohash":"dpscnj"},"query":{"affinity":0.793,"affinity_rank":0.823,"popularity":0.847}},{"location":{"latitude":42.4022,"longitude":-83.0598,"geohash":"dpscjz"},"query":{"affinity":0.867,"affinity_rank":0.897,"popularity":0.692}},{"location":{"latitude":42.4057,"longitude":-83.0576,"geohash":"dpscjz"},"query":{"affinity":0.812,"affinity_rank":0.842,"popularity":0.506}},{"location":{"latitude":42.4518,"longitude":-83.1363,"geohash":"dpscs0"},"query":{"affinity":0.812,"affinity_rank":0.842,"popularity":0.454}},{"location":{"latitude":42.4661,"longitude":-83.1365,"geohash":"dpscs4"},"query":{"affinity":0.769,"affinity_rank":0.799,"popularity":0.579}},{"location":{"latitude":42.4692,"longitude":-83.1204,"geohash":"dpscse"},"query":{"affinity":0.758,"affinity_rank":0.788,"popularity":0.684}},{"location":{"latitude":42.471,"longitude":-83.1288,"geohash":"dpscs7"},"query":{"affinity":0.775,"affinity_rank":0.805,"popularity":0.821}},{"location":{"latitude":42.4546,"longitude":-83.1508,"geohash":"dpsceb"},"query":{"affinity":0.76,"affinity_rank":0.79,"popularity":0.506}},{"location":{"latitude":42.4507,"longitude":-83.1428,"geohash":"dpsckp"},"query":{"affinity":0.706,"affinity_rank":0.736,"popularity":0.369}},{"location":{"latitude":42.4877,"longitude":-83.1594,"geohash":"dpscew"},"query":{"affinity":0.675,"affinity_rank":0.705,"popularity":0.439}},{"location":{"latitude":42.4875,"longitude":-83.1363,"geohash":"dpscsn"},"query":{"affinity":0.608,"affinity_rank":0.638,"popularity":0.881}},{"location":{"latitude":42.4906,"longitude":-83.1433,"geohash":"dpscsp"},"query":{"affinity":0.651,"affinity_rank":0.681,"popularity":0.3}},{"location":{"latitude":42.4982,"longitude":-83.1282,"geohash":"dpscu2"},"query":{"affinity":0.566,"affinity_rank":0.596,"popularity":0.702}},{"location":{"latitude":42.315,"longitude":-83.1822,"geohash":"dpsbep"},"query":{"affinity":0.597,"affinity_rank":0.627,"popularity":0.744}},{"location":{"latitude":42.3113,"longitude":-83.1942,"geohash":"dpsbdy"},"query":{"affinity":0.53,"affinity_rank":0.56,"popularity":0.469}},{"location":{"latitude":42.3096,"longitude":-83.1736,"geohash":"dpsbeq"},"query":{"affinity":0.607,"affinity_rank":0.637,"popularity":0.638}},{"location":{"latitude":42.3133,"longitude":-83.181,"geohash":"dpsben"},"query":{"affinity":0.606,"affinity_rank":0.636,"popularity":0.364}},{"location":{"latitude":42.2837,"longitude":-83.7625,"geohash":"dps2tc"},"query":{"affinity":0.659,"affinity_rank":0.689,"popularity":0.475}},{"location":{"latitude":42.2832,"longitude":-83.7344,"geohash":"dps2w9"},"query":{"affinity":0.739,"affinity_rank":0.769,"popularity":0.388}},{"location":{"latitude":42.2872,"longitude":-83.763,"geohash":"dps2tf"},"query":{"affinity":0.749,"affinity_rank":0.779,"popularity":0.428}},{"location":{"latitude":42.2812,"longitude":-83.7401,"geohash":"dps2w3"},"query":{"affinity":0.72,"affinity_rank":0.75,"popularity":0.686}},{"location":{"latitude":42.2793,"longitude":-83.7482,"geohash":"dps2w2"},"query":{"affinity":0.756,"affinity_rank":0.786,"popularity":0.835}},{"location":{"latitude":42.3673,"longitude":-82.9893,"geohash":"dpscp8"},"query":{"affinity":0.53,"affinity_rank":0.56,"popularity":0.702}},{"location":{"latitude":42.3788,"longitude":-83.0123,"geohash":"dpscp4"},"query":{"affinity":0.505,"affinity_rank":0.535,"popularity":0.325}},{"location":{"latitude":42.3617,"longitude":-82.9938,"geohash":"dpsbzr"},"query":{"affinity":0.459,"affinity_rank":0.489,"popularity":0.775}}]},"query":{"localities":{"filter":{"entity_id":"5E01746F-8BA0-D37B-E53E-C0A27136A8E5","name":"Detroit","subtype":"urn:entity:locality"}}},"duration":75}}}
+{
+ "recordedAt": "2026-10-07",
+ "note": "Recorded from the Qloo hackathon API (https://hackathon.api.qloo.com) on 2026-10-07, trimmed to the fields the app reads. Not edited.",
+ "calls": {
+  "/search?query=Moodymann&take=5&types=urn:entity:artist": {
+   "results": [
+    {
+     "name": "Moodymann",
+     "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.9762188312849388,
+     "disambiguation": "Moodymann",
+     "properties": {
+      "short_description": "Moodymann is an American DJ and producer known for his influential Detroit house music style.",
+      "image": {
+       "url": "https://images.qloo.com/i/3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:detroit_house",
+       "name": "Detroit House",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:deep_house",
+       "name": "Deep House",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:detroit",
+       "name": "Detroit",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:house",
+       "name": "House",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:house",
+       "name": "House",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:detroit_house",
+       "name": "Detroit House",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:deep_house",
+       "name": "Deep House",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:techno",
+       "name": "Techno",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:soul",
+       "name": "Soul",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:funk",
+       "name": "Funk",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    }
+   ]
+  },
+  "/search?query=Floating Points&take=5&types=urn:entity:artist": {
+   "results": [
+    {
+     "name": "Floating Points",
+     "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.9861948443208923,
+     "disambiguation": "Floating Points",
+     "properties": {
+      "short_description": "Floating Points is the stage name of Sam Shepherd, a British electronic music producer, DJ, and neuroscientist known for blending electronic music with jazz and classical influences.",
+      "image": {
+       "url": "https://images.qloo.com/i/4F87DE42-3B65-4ED1-B1C8-D015920E8E10-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:dubstep",
+       "name": "Dubstep",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:chillout",
+       "name": "Chillout",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:deep_house",
+       "name": "Deep House",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:ambient",
+       "name": "Ambient",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:house",
+       "name": "House",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:techno",
+       "name": "Techno",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:jazz_fusion",
+       "name": "Jazz Fusion",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:experimental",
+       "name": "Experimental",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:downtempo",
+       "name": "Downtempo",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:electronica",
+       "name": "Electronica",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    },
+    {
+     "name": "Floating Action",
+     "entity_id": "9F9E357F-7D0A-472E-BAE8-C9BDF18DA51A",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.8727341427949705,
+     "disambiguation": "Floating Action",
+     "properties": {
+      "short_description": "An indie rock band known for blending folk and psychedelic rock elements.",
+      "image": {
+       "url": "https://images.qloo.com/i/9F9E357F-7D0A-472E-BAE8-C9BDF18DA51A-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:indie_pop",
+       "name": "Indie Pop",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:folk",
+       "name": "Folk",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:lo_fi",
+       "name": "Lo - Fi",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:indie",
+       "name": "Indie",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:indie_rock",
+       "name": "Indie Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:folk_rock",
+       "name": "Folk Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:psychedelic_rock",
+       "name": "Psychedelic Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:alternative_rock",
+       "name": "Alternative Rock",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:southern_rock",
+       "name": "Southern Rock",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    },
+    {
+     "name": "Floating Lights",
+     "entity_id": "66CECD68-3233-450A-9B3F-9B8A1800BF6C",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.8472863692642986,
+     "disambiguation": "Floating Lights",
+     "properties": {
+      "short_description": "",
+      "image": {
+       "url": "https://images.qloo.com/i/66CECD68-3233-450A-9B3F-9B8A1800BF6C-420x-auto.jpg"
+      }
+     }
+    },
+    {
+     "name": "Bonus Points",
+     "entity_id": "DE9462E6-D87A-411B-A3A5-E04F5F120526",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.8434302370694745,
+     "disambiguation": "Bonus Points",
+     "properties": {
+      "short_description": "Bonus Points is an indie rock band known for energetic and raw sound.",
+      "image": {
+       "url": "https://images.qloo.com/i/DE9462E6-D87A-411B-A3A5-E04F5F120526-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:chillhop",
+       "name": "Chillhop",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:usa",
+       "name": "Usa",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:instrumental_hip_hop",
+       "name": "Instrumental Hip Hop",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:hip_hop",
+       "name": "Hip - Hop",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:indie_rock",
+       "name": "Indie Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:alternative_rock",
+       "name": "Alternative Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:post_punk",
+       "name": "Post-Punk",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:garage_rock",
+       "name": "Garage Rock",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    },
+    {
+     "name": "Floating Me",
+     "entity_id": "3C21173C-15D8-4407-A017-53CA997A0036",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.8013366575464473,
+     "disambiguation": "Floating Me",
+     "properties": {
+      "short_description": "Australian progressive rock band known for complex compositions and atmospheric soundscapes.",
+      "image": {
+       "url": "https://images.qloo.com/i/3C21173C-15D8-4407-A017-53CA997A0036-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:alternative_rock",
+       "name": "Alternative Rock",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:progressive_rock",
+       "name": "Progressive Rock",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:australian",
+       "name": "Australian",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:psychedelic",
+       "name": "Psychedelic",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:progressive",
+       "name": "Progressive",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:progressive_rock",
+       "name": "Progressive Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:progressive_metal",
+       "name": "Progressive Metal",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:alternative_rock",
+       "name": "Alternative Rock",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    }
+   ]
+  },
+  "/search?query=Jamie xx&take=5&types=urn:entity:artist": {
+   "results": [
+    {
+     "name": "Jamie xx",
+     "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.9966769114506546,
+     "disambiguation": "Jamie xx",
+     "properties": {
+      "short_description": "English electronic music producer and member of The xx.",
+      "image": {
+       "url": "https://images.qloo.com/i/DBFF3527-BCE7-4984-854A-03DC88D5C7CF-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:uk_garage",
+       "name": "Uk Garage",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:dubstep",
+       "name": "Dubstep",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:future_garage",
+       "name": "Future Garage",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:house",
+       "name": "House",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:uk_garage",
+       "name": "UK Garage",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:dance",
+       "name": "Dance",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:indie_electronic",
+       "name": "Indie Electronic",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:downtempo",
+       "name": "Downtempo",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:experimental",
+       "name": "Experimental",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    },
+    {
+     "name": "Jamie xx, Romy",
+     "entity_id": "D8222A60-00E0-4632-90E8-DF53DB460CED",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.3704923231593969,
+     "disambiguation": "Jamie xx, Romy",
+     "properties": {
+      "short_description": "British electronic music producer and vocalist duo known for innovative dance and indie pop sounds.",
+      "image": {
+       "url": "https://images.qloo.com/i/D8222A60-00E0-4632-90E8-DF53DB460CED-420x-auto.jpg"
+      }
+     }
+    },
+    {
+     "name": "Gil Scott-Heron and Jamie xx",
+     "entity_id": "EB135AAC-168D-4CB8-8CED-0359DA547452",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.987331779184983,
+     "disambiguation": "Gil Scott-Heron and Jamie xx",
+     "properties": {
+      "short_description": "A collaborative music project blending Gil Scott-Heron's spoken word and soul with Jamie xx's electronic production.",
+      "image": {
+       "url": "https://images.qloo.com/i/EB135AAC-168D-4CB8-8CED-0359DA547452-420x-auto.jpg"
+      }
+     }
+    },
+    {
+     "name": "The xx",
+     "entity_id": "4FEE60D9-338D-4150-84E2-B0FF0E3C8754",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.9998380626899811,
+     "disambiguation": "The xx",
+     "properties": {
+      "short_description": "An English indie pop band known for their minimalist sound and intimate lyrics.",
+      "image": {
+       "url": "https://images.qloo.com/i/4FEE60D9-338D-4150-84E2-B0FF0E3C8754-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:electronic",
+       "name": "Electronic",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:post_punk",
+       "name": "Post Punk",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:british",
+       "name": "British",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:indie",
+       "name": "Indie",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:indie_pop",
+       "name": "Indie Pop",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:indie_rock",
+       "name": "Indie Rock",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:dream_pop",
+       "name": "Dream Pop",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:electropop",
+       "name": "Electropop",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:minimal_wave",
+       "name": "Minimal Wave",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:alternative_r_b",
+       "name": "Alternative R&B",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:electronica",
+       "name": "Electronica",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    },
+    {
+     "name": "Jamie Cullum",
+     "entity_id": "48DC60CC-A378-4A1A-9D33-C77B00BDD0CB",
+     "types": [
+      "urn:entity:artist"
+     ],
+     "popularity": 0.997338155466565,
+     "disambiguation": "Jamie Cullum",
+     "properties": {
+      "short_description": "Jamie Cullum is a British jazz-pop singer-songwriter and multi-instrumentalist known for blending jazz with pop and rock elements.",
+      "image": {
+       "url": "https://images.qloo.com/i/48DC60CC-A378-4A1A-9D33-C77B00BDD0CB-420x-auto.jpg"
+      }
+     },
+     "tags": [
+      {
+       "tag_id": "urn:tag:genre:piano",
+       "name": "Piano",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:singer_songwriter",
+       "name": "Singer & Songwriter",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:british",
+       "name": "British",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:jazz",
+       "name": "Jazz",
+       "type": "urn:tag:genre"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:jazz",
+       "name": "Jazz",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:pop_jazz",
+       "name": "Pop Jazz",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:genre:qloo:vocal_jazz",
+       "name": "Vocal Jazz",
+       "type": "urn:tag:genre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:swing",
+       "name": "Swing",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:contemporary_jazz",
+       "name": "Contemporary Jazz",
+       "type": "urn:tag:subgenre:qloo"
+      },
+      {
+       "tag_id": "urn:tag:subgenre:qloo:adult_contemporary",
+       "name": "Adult Contemporary",
+       "type": "urn:tag:subgenre:qloo"
+      }
+     ]
+    }
+   ]
+  },
+  "/v2/tags?filter.parents.types=urn:entity:artist&filter.query=deep house&filter.tag.types=urn:tag:genre:music&take=5": {
+   "success": true,
+   "results": {
+    "tags": [
+     {
+      "id": "urn:tag:genre:music:deep_house",
+      "name": "Deep House",
+      "type": "urn:tag:genre:music"
+     },
+     {
+      "id": "urn:tag:genre:music:deephouse",
+      "name": "Deephouse",
+      "type": "urn:tag:genre:music"
+     },
+     {
+      "id": "urn:tag:genre:music:deep_progressive_house",
+      "name": "Deep Progressive House",
+      "type": "urn:tag:genre:music"
+     },
+     {
+      "id": "urn:tag:genre:music:deep_tech_house",
+      "name": "Deep Tech House",
+      "type": "urn:tag:genre:music"
+     },
+     {
+      "id": "urn:tag:genre:music:finest_deep_tech_house",
+      "name": "Finest Deep Tech House",
+      "type": "urn:tag:genre:music"
+     }
+    ]
+   }
+  },
+  "/v2/insights?filter.parents.types=urn:entity:artist&filter.tag.types=urn:tag:genre:music&filter.type=urn:tag&signal.interests.entities=3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90,4F87DE42-3B65-4ED1-B1C8-D015920E8E10,DBFF3527-BCE7-4984-854A-03DC88D5C7CF&take=10": {
+   "success": true,
+   "results": {
+    "tags": [
+     {
+      "tag_id": "urn:tag:genre:music:deep_house",
+      "name": "deep house",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9977273147867751
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:minimal",
+      "name": "minimal",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.994034787895131
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:tech_house",
+      "name": "tech house",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9929113425345104
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:beats",
+      "name": "beats",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9921165290960428
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:minimal_techno",
+      "name": "minimal techno",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9911053165133779
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:techno",
+      "name": " Techno",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9901352621580802
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:instrumental_hip_hop",
+      "name": "instrumental  hip hop",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9898112567811935
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:dubstep",
+      "name": "dubstep",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9895889663024073
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:dub",
+      "name": "dub",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9895497668461526
+      }
+     },
+     {
+      "tag_id": "urn:tag:genre:music:glitch",
+      "name": "glitch",
+      "subtype": "urn:tag:genre:music",
+      "query": {
+       "affinity": 0.9895409553803957
+      }
+     }
+    ]
+   }
+  },
+  "/v2/insights?feature.explainability=true&filter.exclude.entities=3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90,4F87DE42-3B65-4ED1-B1C8-D015920E8E10,DBFF3527-BCE7-4984-854A-03DC88D5C7CF&filter.popularity.max=0.98&filter.popularity.min=0.88&filter.type=urn:entity:artist&signal.interests.entities=3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90,4F87DE42-3B65-4ED1-B1C8-D015920E8E10,DBFF3527-BCE7-4984-854A-03DC88D5C7CF&signal.location.query=Detroit&take=10": {
+   "success": true,
+   "results": {
+    "entities": [
+     {
+      "name": "Leon Vynehall",
+      "entity_id": "F475CD31-1020-4FA5-B52C-C5A131423739",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9689328850703524,
+      "disambiguation": "Leon Vynehall",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Leon Vynehall is a British electronic music producer and DJ known for his deep house and techno productions.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/2fb2d9804127efa8c7cd1ecf25bb9b52.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:music:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:deep_house",
+        "name": "Deep House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:uk_garage",
+        "name": "Uk Garage",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:downtempo",
+        "name": "Downtempo",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.977109240061127,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.34773857953051707
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.3334187599373953
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.31884266053208765
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Daniel Avery",
+      "entity_id": "14EEBC72-3B6F-4631-B780-9A409A35A376",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9731992476521899,
+      "disambiguation": "Daniel Avery",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Daniel Avery is a British electronic music producer and DJ known for his atmospheric techno and house music.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/a5dee379e70f2897bfed91b519fff7cf.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:dance",
+        "name": "Dance",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:idm",
+        "name": "Idm",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9743091071584784,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.34552529313057906
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.33337013172259694
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.32110457514682395
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Octo Octa",
+      "entity_id": "25F12CF9-F90F-4D7C-BB6B-4FA232BF0F9F",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9206856326471764,
+      "disambiguation": "Octo Octa",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Octo Octa is an American electronic music producer and DJ known for her vibrant house and techno productions.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/108caa8d1dde1f29c0764318c56c9ac8.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:subgenre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:deep_house",
+        "name": "Deep House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:garage",
+        "name": "Garage",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:acid_house",
+        "name": "Acid House",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:all",
+        "name": "All",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       }
+      ],
+      "query": {
+       "affinity": 0.9733252720844042,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.34752563870716024
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.3373205360173755
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.3151538252754643
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Daphni",
+      "entity_id": "52AA3C85-2537-4118-8A09-861227C0B078",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9683528956871073,
+      "disambiguation": "Daphni",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Daphni is the electronic music alias of Canadian musician Dan Snaith, known for his dancefloor-oriented productions.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/25cfc01693d04151bb57bc7aca1dd2d6.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:afrobeat",
+        "name": "Afrobeat",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:dance",
+        "name": "Dance",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9712166005974132,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.34755457640407744
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.3341930940482125
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.31825232954770993
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Jacques Greene",
+      "entity_id": "962CE47C-71DD-45E9-B81D-2493FF41521A",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9744739135848587,
+      "disambiguation": "Jacques Greene",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Canadian electronic music producer and DJ known for his emotive and atmospheric sound.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/c48a549734b94979c9539256b4e66dbf.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:music:uk_funky",
+        "name": "Uk Funky",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:future_garage",
+        "name": "Future Garage",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:uk_garage",
+        "name": "UK Garage",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:future_garage",
+        "name": "Future Garage",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:subgenre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9689992285666768,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.35465552492888625
+         },
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.3392202471029419
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.30612422796817185
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "KiNK",
+      "entity_id": "45E50179-A2DE-489F-B802-F25FAEFD3F1E",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9079094823348997,
+      "disambiguation": "KiNK",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "KiNK is a Bulgarian electronic music producer and DJ known for his innovative live performances and genre-blending sound.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/91146d247bd689b9f902db4d76255eb7.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:funky_house",
+        "name": "Funky House",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:minimal_techno",
+        "name": "Minimal Techno",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:tech_house",
+        "name": "Tech House",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9680916409420388,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.35264633767956033
+         },
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.3366239058590684
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.3107297564613712
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Mark Pritchard",
+      "entity_id": "FB7F682F-2BA7-4E9A-B0ED-5588F5914504",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9339008709671077,
+      "disambiguation": "Mark Pritchard",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Mark Pritchard is a British electronic music producer and DJ known for his diverse and innovative sound.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/6335017e7a388fa6a884813a336a81d7.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:hip_hop",
+        "name": "Hip - Hop",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:idm",
+        "name": "IDM",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:drum_and_bass",
+        "name": "Drum And Bass",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:downtempo",
+        "name": "Downtempo",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:experimental",
+        "name": "Experimental",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9661095183831008,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.36527496895180456
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.32465266305253626
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.3100723679956592
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Fort Romeau",
+      "entity_id": "9ADCEC68-E012-405D-B6E6-4D380877D6F0",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9298343917320383,
+      "disambiguation": "Fort Romeau",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Fort Romeau is a British electronic music producer and DJ known for his deep house and techno sounds.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/b58e91b6ffe248099e41b02b41783cda.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:qloo:deep_house",
+        "name": "Deep House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:downtempo",
+        "name": "Downtempo",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:disco_house",
+        "name": "Disco House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:electronica",
+        "name": "Electronica",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:electronica",
+        "name": "Electronica",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9650986201697732,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.34279784624513265
+         },
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.3355960899555962
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.32160606379927126
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Recondite",
+      "entity_id": "935096FE-3A7F-47E4-871B-771934E47C73",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9677139243326845,
+      "disambiguation": "Recondite",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "Recondite is a German electronic music producer known for his atmospheric and melancholic techno sound.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/e06c168596874a2925b19552fe6db68c.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:qloo:minimal_techno",
+        "name": "Minimal Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:electronica",
+        "name": "Electronica",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:deep_house",
+        "name": "Deep House",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:acid_house",
+        "name": "Acid House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:ambient",
+        "name": "Ambient",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       }
+      ],
+      "query": {
+       "affinity": 0.9630306201748785,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.3419878376830846
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.33091284190469544
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.32709932041221995
+         }
+        ]
+       }
+      }
+     },
+     {
+      "name": "Galcher Lustwerk",
+      "entity_id": "81ABC973-E249-4BBF-B29A-3115DA3EB3DA",
+      "type": "urn:entity",
+      "subtype": "urn:entity:artist",
+      "popularity": 0.9020407762027407,
+      "disambiguation": "Galcher Lustwerk",
+      "properties": {
+       "short_descriptions": [
+        {
+         "value": "American electronic music producer known for deep house and garage-influenced sounds.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://lastfm.freetls.fastly.net/i/u/770x0/f967b99f7a83d2a87addb2eb3128870e.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:music:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:techno",
+        "name": "Techno",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:electronic",
+        "name": "Electronic",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:music:usa",
+        "name": "Usa",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:music:house",
+        "name": "House",
+        "type": "urn:tag:genre:music"
+       },
+       {
+        "id": "urn:tag:genre:qloo:house",
+        "name": "House",
+        "type": "urn:tag:genre:qloo"
+       },
+       {
+        "id": "urn:tag:subgenre:qloo:garage",
+        "name": "Garage",
+        "type": "urn:tag:subgenre:qloo"
+       },
+       {
+        "id": "urn:tag:genre:qloo:deep_house",
+        "name": "Deep House",
+        "type": "urn:tag:genre:qloo"
+       }
+      ],
+      "query": {
+       "affinity": 0.9630257011549327,
+       "explainability": {
+        "signal.interests.entities": [
+         {
+          "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+          "score": 0.3465662273513851
+         },
+         {
+          "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+          "score": 0.3442908503377116
+         },
+         {
+          "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+          "score": 0.3091429223109033
+         }
+        ]
+       }
+      }
+     }
+    ]
+   },
+   "query": {
+    "localities": {
+     "signal": {
+      "entity_id": "56089B5C-3BAA-4424-B580-AB9787150C62",
+      "name": "Detroit",
+      "subtype": "urn:entity:locality",
+      "location": {
+       "lat": 42.38341126665237,
+       "lon": -83.10216895196113
+      },
+      "popularity": 0.9981671,
+      "disambiguation": "Detroit, Wayne County, Michigan, United States"
+     }
+    },
+    "explainability": {
+     "signal.interests.entities": {
+      "effect_on_top3_recs": [
+       {
+        "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+        "avg_score": 0.3469298371227521
+       },
+       {
+        "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+        "avg_score": 0.3306146237005316
+       },
+       {
+        "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+        "avg_score": 0.32245553917671627
+       }
+      ],
+      "effect_on_top5_recs": [
+       {
+        "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+        "avg_score": 0.3455128669750552
+       },
+       {
+        "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+        "avg_score": 0.3312430473014495
+       },
+       {
+        "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+        "avg_score": 0.3232440857234953
+       }
+      ],
+      "effect_on_top10_recs": [
+       {
+        "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+        "avg_score": 0.34536133646762146
+       },
+       {
+        "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+        "avg_score": 0.3296940672780236
+       },
+       {
+        "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+        "avg_score": 0.32494459625435496
+       }
+      ],
+      "effect_on_all_recs": [
+       {
+        "entity_id": "4F87DE42-3B65-4ED1-B1C8-D015920E8E10",
+        "avg_score": 0.34536133646762146
+       },
+       {
+        "entity_id": "3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90",
+        "avg_score": 0.3296940672780236
+       },
+       {
+        "entity_id": "DBFF3527-BCE7-4984-854A-03DC88D5C7CF",
+        "avg_score": 0.32494459625435496
+       }
+      ]
+     }
+    }
+   }
+  },
+  "/v2/insights?filter.location.query=Detroit&filter.type=urn:heatmap&signal.interests.entities=F475CD31-1020-4FA5-B52C-C5A131423739,14EEBC72-3B6F-4631-B780-9A409A35A376,25F12CF9-F90F-4D7C-BB6B-4FA232BF0F9F": {
+   "success": true,
+   "results": {
+    "heatmap": [
+     {
+      "location": {
+       "latitude": 42.417526,
+       "longitude": -83.115005,
+       "geohash": "dpsck9v"
+      },
+      "query": {
+       "affinity": 1,
+       "affinity_rank": 0.950276,
+       "popularity": 0.88
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.32689,
+       "longitude": -83.04497,
+       "geohash": "dpsby32"
+      },
+      "query": {
+       "affinity": 0.99,
+       "affinity_rank": 0.9287946666666667,
+       "popularity": 0.99
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.372208,
+       "longitude": -83.06419,
+       "geohash": "dpscjcd"
+      },
+      "query": {
+       "affinity": 0.98,
+       "affinity_rank": 0.904792,
+       "popularity": 0.84
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.336502,
+       "longitude": -83.05046,
+       "geohash": "dpsby5h"
+      },
+      "query": {
+       "affinity": 0.97,
+       "affinity_rank": 0.9003426666666666,
+       "popularity": 1
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.362595,
+       "longitude": -83.08479,
+       "geohash": "dpsbvrg"
+      },
+      "query": {
+       "affinity": 0.96,
+       "affinity_rank": 0.8806763333333333,
+       "popularity": 0.97
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.337875,
+       "longitude": -83.06282,
+       "geohash": "dpsbvg7"
+      },
+      "query": {
+       "affinity": 0.95,
+       "affinity_rank": 0.867915,
+       "popularity": 0.98
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.07106,
+       "geohash": "dpsbvdj"
+      },
+      "query": {
+       "affinity": 0.94,
+       "affinity_rank": 0.785438,
+       "popularity": 0.9
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.328262,
+       "longitude": -83.043594,
+       "geohash": "dpsby39"
+      },
+      "query": {
+       "affinity": 0.93,
+       "affinity_rank": 0.7486510000000001,
+       "popularity": 0.93
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.328262,
+       "longitude": -83.04497,
+       "geohash": "dpsby38"
+      },
+      "query": {
+       "affinity": 0.92,
+       "affinity_rank": 0.7481976666666666,
+       "popularity": 0.96
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.30629,
+       "longitude": -83.10951,
+       "geohash": "dpsbsv9"
+      },
+      "query": {
+       "affinity": 0.91,
+       "affinity_rank": 0.707483,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.05458,
+       "geohash": "dpsby49"
+      },
+      "query": {
+       "affinity": 0.9,
+       "affinity_rank": 0.7062566666666665,
+       "popularity": 0.86
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.379074,
+       "longitude": -83.06831,
+       "geohash": "dpscjdz"
+      },
+      "query": {
+       "affinity": 0.89,
+       "affinity_rank": 0.690511,
+       "popularity": 0.34
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.363968,
+       "longitude": -82.97768,
+       "geohash": "dpscpb1"
+      },
+      "query": {
+       "affinity": 0.88,
+       "affinity_rank": 0.653112,
+       "popularity": 0.53
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.32689,
+       "longitude": -83.043594,
+       "geohash": "dpsby33"
+      },
+      "query": {
+       "affinity": 0.87,
+       "affinity_rank": 0.641032,
+       "popularity": 0.8
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.341995,
+       "longitude": -83.0587,
+       "geohash": "dpsbvun"
+      },
+      "query": {
+       "affinity": 0.86,
+       "affinity_rank": 0.6319125,
+       "popularity": 0.68
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.04909,
+       "geohash": "dpsby4v"
+      },
+      "query": {
+       "affinity": 0.85,
+       "affinity_rank": 0.625179,
+       "popularity": 0.87
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.321396,
+       "longitude": -83.09303,
+       "geohash": "dpsbv0m"
+      },
+      "query": {
+       "affinity": 0.84,
+       "affinity_rank": 0.6196983333333334,
+       "popularity": 0.95
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34474,
+       "longitude": -83.0381,
+       "geohash": "dpsbykt"
+      },
+      "query": {
+       "affinity": 0.83,
+       "affinity_rank": 0.611637,
+       "popularity": 0.78
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.315903,
+       "longitude": -83.102646,
+       "geohash": "dpsbszq"
+      },
+      "query": {
+       "affinity": 0.82,
+       "affinity_rank": 0.609551,
+       "popularity": 0.53
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.359848,
+       "longitude": -83.06419,
+       "geohash": "dpsbvz6"
+      },
+      "query": {
+       "affinity": 0.81,
+       "affinity_rank": 0.6088856666666667,
+       "popularity": 0.94
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.358475,
+       "longitude": -83.02162,
+       "geohash": "dpsbyz1"
+      },
+      "query": {
+       "affinity": 0.8,
+       "affinity_rank": 0.6081523333333333,
+       "popularity": 0.89
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34749,
+       "longitude": -83.07793,
+       "geohash": "dpsbvt0"
+      },
+      "query": {
+       "affinity": 0.79,
+       "affinity_rank": 0.605741,
+       "popularity": 0.41
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.07243,
+       "geohash": "dpsbvdh"
+      },
+      "query": {
+       "affinity": 0.78,
+       "affinity_rank": 0.602289,
+       "popularity": 0.79
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34886,
+       "longitude": -83.06282,
+       "geohash": "dpsbvv7"
+      },
+      "query": {
+       "affinity": 0.77,
+       "affinity_rank": 0.5830683333333334,
+       "popularity": 0.77
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.04909,
+       "geohash": "dpsby4t"
+      },
+      "query": {
+       "affinity": 0.76,
+       "affinity_rank": 0.581022,
+       "popularity": 0.71
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.06145,
+       "geohash": "dpsbvcu"
+      },
+      "query": {
+       "affinity": 0.75,
+       "affinity_rank": 0.576344,
+       "popularity": 0.41
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.047714,
+       "geohash": "dpsby4n"
+      },
+      "query": {
+       "affinity": 0.74,
+       "affinity_rank": 0.5665236666666666,
+       "popularity": 0.84
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34749,
+       "longitude": -83.039474,
+       "geohash": "dpsbymh"
+      },
+      "query": {
+       "affinity": 0.73,
+       "affinity_rank": 0.562333,
+       "popularity": 0.59
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.35161,
+       "longitude": -83.060074,
+       "geohash": "dpsbvvv"
+      },
+      "query": {
+       "affinity": 0.72,
+       "affinity_rank": 0.5564773333333334,
+       "popularity": 0.92
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.354355,
+       "longitude": -83.06145,
+       "geohash": "dpsbvyk"
+      },
+      "query": {
+       "affinity": 0.71,
+       "affinity_rank": 0.5480470000000001,
+       "popularity": 0.83
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.363968,
+       "longitude": -83.08891,
+       "geohash": "dpscj20"
+      },
+      "query": {
+       "affinity": 0.7,
+       "affinity_rank": 0.5405169999999999,
+       "popularity": 0.81
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.328262,
+       "longitude": -83.07793,
+       "geohash": "dpsbv98"
+      },
+      "query": {
+       "affinity": 0.69,
+       "affinity_rank": 0.540075,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.341995,
+       "longitude": -83.060074,
+       "geohash": "dpsbvuj"
+      },
+      "query": {
+       "affinity": 0.68,
+       "affinity_rank": 0.5248883333333333,
+       "popularity": 0.91
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.05458,
+       "geohash": "dpsby4c"
+      },
+      "query": {
+       "affinity": 0.67,
+       "affinity_rank": 0.523148,
+       "popularity": 0.53
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.32689,
+       "longitude": -83.13286,
+       "geohash": "dpsbu32"
+      },
+      "query": {
+       "affinity": 0.66,
+       "affinity_rank": 0.52274,
+       "popularity": 0.45
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34337,
+       "longitude": -83.0381,
+       "geohash": "dpsbykm"
+      },
+      "query": {
+       "affinity": 0.65,
+       "affinity_rank": 0.521144,
+       "popularity": 0.31
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.412033,
+       "longitude": -82.935104,
+       "geohash": "dpt12bb"
+      },
+      "query": {
+       "affinity": 0.64,
+       "affinity_rank": 0.5172615,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.06282,
+       "geohash": "dpsbvf7"
+      },
+      "query": {
+       "affinity": 0.63,
+       "affinity_rank": 0.512448,
+       "popularity": 0.59
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.379074,
+       "longitude": -83.02849,
+       "geohash": "dpscndu"
+      },
+      "query": {
+       "affinity": 0.62,
+       "affinity_rank": 0.500501,
+       "popularity": 0.39
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.325516,
+       "longitude": -83.08205,
+       "geohash": "dpsbv3j"
+      },
+      "query": {
+       "affinity": 0.61,
+       "affinity_rank": 0.489731,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.04909,
+       "geohash": "dpsby4m"
+      },
+      "query": {
+       "affinity": 0.6,
+       "affinity_rank": 0.483814,
+       "popularity": 0.45
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.336502,
+       "longitude": -83.055954,
+       "geohash": "dpsby50"
+      },
+      "query": {
+       "affinity": 0.59,
+       "affinity_rank": 0.480945,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34474,
+       "longitude": -83.055954,
+       "geohash": "dpsbyh8"
+      },
+      "query": {
+       "affinity": 0.58,
+       "affinity_rank": 0.478693,
+       "popularity": 0.34
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.340622,
+       "longitude": -82.98042,
+       "geohash": "dpsbzez"
+      },
+      "query": {
+       "affinity": 0.57,
+       "affinity_rank": 0.47579,
+       "popularity": 0.34
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34749,
+       "longitude": -83.04085,
+       "geohash": "dpsbym5"
+      },
+      "query": {
+       "affinity": 0.56,
+       "affinity_rank": 0.47310066666666667,
+       "popularity": 0.81
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.047714,
+       "geohash": "dpsby4q"
+      },
+      "query": {
+       "affinity": 0.55,
+       "affinity_rank": 0.464513,
+       "popularity": 0.45
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.424393,
+       "longitude": -83.027115,
+       "geohash": "dpscqej"
+      },
+      "query": {
+       "affinity": 0.54,
+       "affinity_rank": 0.45045,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.346115,
+       "longitude": -83.043594,
+       "geohash": "dpsbykc"
+      },
+      "query": {
+       "affinity": 0.53,
+       "affinity_rank": 0.448444,
+       "popularity": 0.31
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.04634,
+       "geohash": "dpsby1z"
+      },
+      "query": {
+       "affinity": 0.52,
+       "affinity_rank": 0.4455775,
+       "popularity": 0.62
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.36122,
+       "longitude": -83.08205,
+       "geohash": "dpsbvrt"
+      },
+      "query": {
+       "affinity": 0.51,
+       "affinity_rank": 0.4376085,
+       "popularity": 0.65
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.043594,
+       "geohash": "dpsby61"
+      },
+      "query": {
+       "affinity": 0.5,
+       "affinity_rank": 0.430663,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.06694,
+       "geohash": "dpsbvf0"
+      },
+      "query": {
+       "affinity": 0.49,
+       "affinity_rank": 0.426409,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.07655,
+       "geohash": "dpsbvd1"
+      },
+      "query": {
+       "affinity": 0.48,
+       "affinity_rank": 0.42514766666666665,
+       "popularity": 0.71
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.04222,
+       "geohash": "dpsby64"
+      },
+      "query": {
+       "affinity": 0.47,
+       "affinity_rank": 0.423714,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.36946,
+       "longitude": -83.07655,
+       "geohash": "dpscj91"
+      },
+      "query": {
+       "affinity": 0.46,
+       "affinity_rank": 0.420279,
+       "popularity": 0.75
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.04222,
+       "geohash": "dpsby6f"
+      },
+      "query": {
+       "affinity": 0.45,
+       "affinity_rank": 0.4190883333333333,
+       "popularity": 0.69
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.350235,
+       "longitude": -83.060074,
+       "geohash": "dpsbvvt"
+      },
+      "query": {
+       "affinity": 0.44,
+       "affinity_rank": 0.4100585,
+       "popularity": 0.65
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.06419,
+       "geohash": "dpsbvf4"
+      },
+      "query": {
+       "affinity": 0.43,
+       "affinity_rank": 0.4094626666666667,
+       "popularity": 0.65
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.047714,
+       "geohash": "dpsby4y"
+      },
+      "query": {
+       "affinity": 0.42,
+       "affinity_rank": 0.4089,
+       "popularity": 0.76
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.340622,
+       "longitude": -82.98729,
+       "geohash": "dpsbzef"
+      },
+      "query": {
+       "affinity": 0.41,
+       "affinity_rank": 0.4061065,
+       "popularity": 0.58
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.35161,
+       "longitude": -83.06557,
+       "geohash": "dpsbvvc"
+      },
+      "query": {
+       "affinity": 0.4,
+       "affinity_rank": 0.4020323333333333,
+       "popularity": 0.73
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.405167,
+       "longitude": -83.04634,
+       "geohash": "dpscnpx"
+      },
+      "query": {
+       "affinity": 0.39,
+       "affinity_rank": 0.400552,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.03261,
+       "geohash": "dpsby9c"
+      },
+      "query": {
+       "affinity": 0.38,
+       "affinity_rank": 0.397719,
+       "popularity": 0.62
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.350235,
+       "longitude": -83.039474,
+       "geohash": "dpsbyms"
+      },
+      "query": {
+       "affinity": 0.37,
+       "affinity_rank": 0.391616,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.05046,
+       "geohash": "dpsby4s"
+      },
+      "query": {
+       "affinity": 0.36,
+       "affinity_rank": 0.38787366666666667,
+       "popularity": 0.64
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.08067,
+       "geohash": "dpsbv6n"
+      },
+      "query": {
+       "affinity": 0.35,
+       "affinity_rank": 0.386083,
+       "popularity": 0.57
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.36946,
+       "longitude": -83.06831,
+       "geohash": "dpscj9p"
+      },
+      "query": {
+       "affinity": 0.34,
+       "affinity_rank": 0.385097,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.366714,
+       "longitude": -83.07655,
+       "geohash": "dpscj89"
+      },
+      "query": {
+       "affinity": 0.33,
+       "affinity_rank": 0.38415133333333334,
+       "popularity": 0.38
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34749,
+       "longitude": -83.06557,
+       "geohash": "dpsbvv1"
+      },
+      "query": {
+       "affinity": 0.32,
+       "affinity_rank": 0.379406,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34749,
+       "longitude": -83.06419,
+       "geohash": "dpsbvv4"
+      },
+      "query": {
+       "affinity": 0.31,
+       "affinity_rank": 0.369143,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.06557,
+       "geohash": "dpsbvcc"
+      },
+      "query": {
+       "affinity": 0.3,
+       "affinity_rank": 0.36787233333333336,
+       "popularity": 0.45
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.04634,
+       "geohash": "dpsby4z"
+      },
+      "query": {
+       "affinity": 0.29,
+       "affinity_rank": 0.36248199999999997,
+       "popularity": 0.51
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.05046,
+       "geohash": "dpsby4k"
+      },
+      "query": {
+       "affinity": 0.28,
+       "affinity_rank": 0.35073499999999996,
+       "popularity": 0.44
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.04497,
+       "geohash": "dpsby60"
+      },
+      "query": {
+       "affinity": 0.27,
+       "affinity_rank": 0.340252,
+       "popularity": 0.43
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.04085,
+       "geohash": "dpsby67"
+      },
+      "query": {
+       "affinity": 0.26,
+       "affinity_rank": 0.338864,
+       "popularity": 0.59
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.02162,
+       "geohash": "dpsbyf9"
+      },
+      "query": {
+       "affinity": 0.25,
+       "affinity_rank": 0.336674,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33925,
+       "longitude": -83.06694,
+       "geohash": "dpsbvg8"
+      },
+      "query": {
+       "affinity": 0.24,
+       "affinity_rank": 0.331268,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.04909,
+       "geohash": "dpsby4j"
+      },
+      "query": {
+       "affinity": 0.23,
+       "affinity_rank": 0.329583,
+       "popularity": 0.5
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.328262,
+       "longitude": -83.047714,
+       "geohash": "dpsby1w"
+      },
+      "query": {
+       "affinity": 0.22,
+       "affinity_rank": 0.323023,
+       "popularity": 0.34
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.07518,
+       "geohash": "dpsbvd4"
+      },
+      "query": {
+       "affinity": 0.21,
+       "affinity_rank": 0.31775633333333336,
+       "popularity": 0.45
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.37358,
+       "longitude": -83.06694,
+       "geohash": "dpscjcb"
+      },
+      "query": {
+       "affinity": 0.2,
+       "affinity_rank": 0.314965,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.442245,
+       "longitude": -83.26195,
+       "geohash": "dpsc3q6"
+      },
+      "query": {
+       "affinity": 0.19,
+       "affinity_rank": 0.31351,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.039474,
+       "geohash": "dpsby3u"
+      },
+      "query": {
+       "affinity": 0.18,
+       "affinity_rank": 0.309222,
+       "popularity": 0.22
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.321396,
+       "longitude": -83.094406,
+       "geohash": "dpsbv0k"
+      },
+      "query": {
+       "affinity": 0.17,
+       "affinity_rank": 0.308691,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.38182,
+       "longitude": -83.09715,
+       "geohash": "dpscj56"
+      },
+      "query": {
+       "affinity": 0.16,
+       "affinity_rank": 0.306991,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.332382,
+       "longitude": -83.04222,
+       "geohash": "dpsby66"
+      },
+      "query": {
+       "affinity": 0.15,
+       "affinity_rank": 0.30366933333333335,
+       "popularity": 0.74
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.04634,
+       "geohash": "dpsby4x"
+      },
+      "query": {
+       "affinity": 0.14,
+       "affinity_rank": 0.296599,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33101,
+       "longitude": -83.04634,
+       "geohash": "dpsby4p"
+      },
+      "query": {
+       "affinity": 0.13,
+       "affinity_rank": 0.295016,
+       "popularity": 0.4
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.05046,
+       "geohash": "dpsby4u"
+      },
+      "query": {
+       "affinity": 0.12,
+       "affinity_rank": 0.285168,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33513,
+       "longitude": -83.04085,
+       "geohash": "dpsby6g"
+      },
+      "query": {
+       "affinity": 0.11,
+       "affinity_rank": 0.277069,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.329636,
+       "longitude": -83.07655,
+       "geohash": "dpsbv9c"
+      },
+      "query": {
+       "affinity": 0.1,
+       "affinity_rank": 0.273212,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.337875,
+       "longitude": -83.051834,
+       "geohash": "dpsby57"
+      },
+      "query": {
+       "affinity": 0.09,
+       "affinity_rank": 0.26794199999999996,
+       "popularity": 0.69
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.36946,
+       "longitude": -83.07793,
+       "geohash": "dpscj90"
+      },
+      "query": {
+       "affinity": 0.08,
+       "affinity_rank": 0.264447,
+       "popularity": 0.08
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.32689,
+       "longitude": -83.047714,
+       "geohash": "dpsby1q"
+      },
+      "query": {
+       "affinity": 0.07,
+       "affinity_rank": 0.26244,
+       "popularity": 0.15
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.340622,
+       "longitude": -83.03261,
+       "geohash": "dpsbyec"
+      },
+      "query": {
+       "affinity": 0.06,
+       "affinity_rank": 0.260976,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.333755,
+       "longitude": -83.04222,
+       "geohash": "dpsby6d"
+      },
+      "query": {
+       "affinity": 0.05,
+       "affinity_rank": 0.258204,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.337875,
+       "longitude": -83.05321,
+       "geohash": "dpsby56"
+      },
+      "query": {
+       "affinity": 0.04,
+       "affinity_rank": 0.25434866666666667,
+       "popularity": 0.53
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33925,
+       "longitude": -83.04909,
+       "geohash": "dpsby5t"
+      },
+      "query": {
+       "affinity": 0.03,
+       "affinity_rank": 0.24907800000000002,
+       "popularity": 0.52
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.34474,
+       "longitude": -83.039474,
+       "geohash": "dpsbyks"
+      },
+      "query": {
+       "affinity": 0.02,
+       "affinity_rank": 0.192101,
+       "popularity": 0
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.340622,
+       "longitude": -83.05458,
+       "geohash": "dpsby5c"
+      },
+      "query": {
+       "affinity": 0.01,
+       "affinity_rank": 0.19194666666666668,
+       "popularity": 0.33
+      }
+     },
+     {
+      "location": {
+       "latitude": 42.33925,
+       "longitude": -83.04497,
+       "geohash": "dpsby78"
+      },
+      "query": {
+       "affinity": 0,
+       "affinity_rank": 0.16640749999999999,
+       "popularity": 0.21
+      }
+     }
+    ]
+   },
+   "query": {
+    "localities": {
+     "filter": [
+      {
+       "entity_id": "56089B5C-3BAA-4424-B580-AB9787150C62",
+       "name": "Detroit",
+       "subtype": "urn:entity:locality",
+       "location": {
+        "lat": 42.38341126665237,
+        "lon": -83.10216895196113
+       },
+       "popularity": 0.9981671,
+       "disambiguation": "Detroit, Wayne County, Michigan, United States"
+      }
+     ]
+    }
+   }
+  },
+  "/v2/insights?filter.type=urn:demographics&signal.interests.entities=F475CD31-1020-4FA5-B52C-C5A131423739,14EEBC72-3B6F-4631-B780-9A409A35A376,25F12CF9-F90F-4D7C-BB6B-4FA232BF0F9F": {
+   "success": true,
+   "results": {
+    "demographics": [
+     {
+      "entity_id": "14EEBC72-3B6F-4631-B780-9A409A35A376",
+      "query": {
+       "age": {
+        "24_and_younger": 0.36,
+        "25_to_29": -0.26,
+        "30_to_34": 0.1,
+        "35_to_44": -0.6000000000000001,
+        "45_to_54": 0.14,
+        "55_and_older": 0
+       },
+       "gender": {
+        "male": 0.51,
+        "female": -0.51
+       }
+      }
+     },
+     {
+      "entity_id": "F475CD31-1020-4FA5-B52C-C5A131423739",
+      "query": {
+       "age": {
+        "24_and_younger": 0.38,
+        "25_to_29": -0.28,
+        "30_to_34": 0.29,
+        "35_to_44": -0.66,
+        "45_to_54": 0.09,
+        "55_and_older": -0.67
+       },
+       "gender": {
+        "male": 0.52,
+        "female": -0.52
+       }
+      }
+     },
+     {
+      "entity_id": "25F12CF9-F90F-4D7C-BB6B-4FA232BF0F9F",
+      "query": {
+       "age": {
+        "24_and_younger": -0.16,
+        "25_to_29": -0.27,
+        "30_to_34": -0.63,
+        "35_to_44": 0.32,
+        "45_to_54": 0.27,
+        "55_and_older": -0.73
+       },
+       "gender": {
+        "male": 0.32,
+        "female": -0.32
+       }
+      }
+     }
+    ]
+   }
+  },
+  "/v2/insights?filter.type=urn:entity:brand&signal.interests.entities=3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90,4F87DE42-3B65-4ED1-B1C8-D015920E8E10,DBFF3527-BCE7-4984-854A-03DC88D5C7CF,F475CD31-1020-4FA5-B52C-C5A131423739,14EEBC72-3B6F-4631-B780-9A409A35A376,25F12CF9-F90F-4D7C-BB6B-4FA232BF0F9F&signal.location.query=Detroit&take=8": {
+   "success": true,
+   "results": {
+    "entities": [
+     {
+      "name": "Stones Throw Records",
+      "entity_id": "BFE400C1-19BF-4491-9730-2DD7054CE2B7",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9440084080622467,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Stones Throw Records is an independent record label known for releasing music on vinyl, CD, cassette, and digital formats, featuring hip-hop and experimental artists.",
+       "short_descriptions": [
+        {
+         "value": "An independent label celebrated for its influential, genre-defying contributions to hip hop, funk, and electronic music.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": null
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:entertainment",
+        "name": "Entertainment",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:website",
+        "name": "Website",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9766389798642623
+      }
+     },
+     {
+      "name": "Discogs",
+      "entity_id": "7F0C0511-3968-4526-ACFB-A9420CFA96DD",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9149870319201234,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Discogs is a leading online music database and marketplace for discovering, cataloging, and buying vinyl records and other music formats.",
+       "short_descriptions": [
+        {
+         "value": "The leading global platform for discovering, cataloging, and trading physical music releases through an extensive, community-driven database.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": null
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:website",
+        "name": "Website",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9710025115142378
+      }
+     },
+     {
+      "name": "Vice",
+      "entity_id": "A5707876-D5A1-49F0-ABF9-A793EA7736D2",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9984912952823312,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "VICE is a global media brand known for original journalism and content covering diverse cultural, social, and political topics, including its Spanish-language platform VICE en Español.",
+       "short_descriptions": [
+        {
+         "value": "A global media company providing investigative journalism and immersive content on culture, politics, and social issues.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "s3://qloo-autogenic/instagram/images/profiles/23/2388589.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:entertainment:media:news_and_politics",
+        "name": "News & Politics",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:entertainment:media",
+        "name": "Media",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:entertainment",
+        "name": "Entertainment",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:entertainment:tv_networks",
+        "name": "TV Networks",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:website",
+        "name": "Website",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9626428225966479
+      }
+     },
+     {
+      "name": "OBEY",
+      "entity_id": "D04983DC-4285-4FC2-9DBE-834163CCA337",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9721991490227323,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "OBEY is a clothing brand known for its streetwear apparel and art-inspired designs, founded by artist Shepard Fairey.",
+       "short_descriptions": [
+        {
+         "value": "An artist-founded brand blending counter-cultural graphic art, DIY ethos, and streetwear sensibilities.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "s3://qloo-autogenic/instagram/images/profiles/20/20047044.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:fashion",
+        "name": "Fashion",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:fashion:casual",
+        "name": "Casual",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9519935236382903
+      }
+     },
+     {
+      "name": "Turntable Lab",
+      "entity_id": "0228F1E1-A35E-4F14-9B67-E2EB6A7E6357",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.8468495194182163,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Turntable Lab is a music store specializing in turntables, vinyl records, and stereo equipment, serving DJs and music enthusiasts since 1999.",
+       "short_descriptions": [
+        {
+         "value": "A premier destination for audiophiles and DJs, offering a curated selection of turntables, high-quality audio equipment, and exclusive vinyl records.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": null
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:electronics:music_instruments",
+        "name": "Music Instruments",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:electronics",
+        "name": "Electronics",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9519744983978492
+      }
+     },
+     {
+      "name": "Pitchfork",
+      "entity_id": "08E0FC76-1D07-441F-8FA1-4A22D6B32CC8",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9941092709057314,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Pitchfork is a trusted music media brand known for in-depth album reviews, music news, and the annual Pitchfork Music Festival.",
+       "short_descriptions": [
+        {
+         "value": "An influential publication providing deep-dive analysis, reviews, and cultural reporting on the evolving landscape of global music.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/Pitchfork%20logo.svg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:website",
+        "name": "Website",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9512306766303308
+      }
+     },
+     {
+      "name": "Splice",
+      "entity_id": "F585D1F8-9CCB-4708-9B9F-3999BB350919",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9038497397908155,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Splice is a digital platform offering royalty-free sounds, loops, presets, and tools for music production and video editing.",
+       "short_descriptions": [
+        {
+         "value": "A premier digital library providing creators with royalty-free sounds, samples, presets, and virtual instruments for seamless music production.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": null
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:website",
+        "name": "Website",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:mobile_app:photo_and_video",
+        "name": "Photo & Video App",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:mobile_app",
+        "name": "Mobile App",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:software",
+        "name": "Software",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9508457720901474
+      }
+     },
+     {
+      "name": "Kith",
+      "entity_id": "F3DF06A0-49FA-439D-9D74-534EA2A0C5E9",
+      "type": "urn:entity",
+      "subtype": "urn:entity:brand",
+      "popularity": 0.9907358749639775,
+      "disambiguation": "",
+      "properties": {
+       "short_description": "Kith is a lifestyle brand known for its performance-driven collections of outerwear, apparel, footwear, and accessories, with global retail presence.",
+       "short_descriptions": [
+        {
+         "value": "A multifunctional lifestyle brand blending premium apparel, footwear, and accessories with a curated approach to design and global retail culture.",
+         "languages": [
+          "en"
+         ]
+        }
+       ],
+       "image": {
+        "url": "s3://qloo-autogenic/instagram/images/profiles/21/21109548.jpg"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:brand:fashion:casual",
+        "name": "Casual",
+        "type": "urn:tag:genre:brand"
+       },
+       {
+        "id": "urn:tag:genre:brand:fashion",
+        "name": "Fashion",
+        "type": "urn:tag:genre:brand"
+       }
+      ],
+      "query": {
+       "affinity": 0.9502213205326974
+      }
+     }
+    ]
+   },
+   "query": {
+    "localities": {
+     "signal": {
+      "entity_id": "56089B5C-3BAA-4424-B580-AB9787150C62",
+      "name": "Detroit",
+      "subtype": "urn:entity:locality",
+      "location": {
+       "lat": 42.38341126665237,
+       "lon": -83.10216895196113
+      },
+      "popularity": 0.9981671,
+      "disambiguation": "Detroit, Wayne County, Michigan, United States"
+     }
+    }
+   }
+  },
+  "/v2/insights?filter.location.query=Detroit&filter.type=urn:entity:place&signal.interests.entities=3A1B9A5F-39DE-41D5-A62F-D76FD7F39E90,4F87DE42-3B65-4ED1-B1C8-D015920E8E10,DBFF3527-BCE7-4984-854A-03DC88D5C7CF&take=6": {
+   "success": true,
+   "results": {
+    "entities": [
+     {
+      "name": "Marble Bar",
+      "entity_id": "C5987BA2-B40F-49D1-B933-45E1143E4CBC",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.9912159684944956,
+      "disambiguation": "1501 Holden St Detroit, MI 48208",
+      "location": {
+       "lat": 42.3630469,
+       "lon": -83.0852008,
+       "geohash": "dpsbvrgnwsd7"
+      },
+      "properties": {
+       "short_description": "Industrial-hip venue with indoor and outdoor spaces for EDM DJs, dancing, and a full bar; LGBTQ+ friendly.",
+       "address": "1501 Holden St Detroit, MI 48208",
+       "geocode": {
+        "city": "Detroit",
+        "name": null,
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:place:tourist_attraction",
+        "name": "Tourist attraction",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place",
+        "name": "Place",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:restaurant",
+        "name": "Restaurant",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:live_music_venue",
+        "name": "Live music venue",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:restaurant:bar",
+        "name": "Bar",
+        "type": "urn:tag:genre:place"
+       }
+      ],
+      "query": {
+       "affinity": 0.8065237053948445
+      }
+     },
+     {
+      "name": "Yorba Hotel",
+      "entity_id": "9BEC0077-ED7F-4F46-8F0D-7DFEC7430F66",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.4524044603081385,
+      "disambiguation": "4020 W Lafayette Blvd Detroit, MI 48209",
+      "location": {
+       "lat": 42.3159029,
+       "lon": -83.0881378,
+       "geohash": "dpsbtr3h40h2"
+      },
+      "properties": {
+       "short_description": "Urban hotel on Lafayette Boulevard offering on-site parking and complimentary Wi‑Fi, convenient for visitors to Detroit's central neighborhoods.",
+       "address": "4020 W Lafayette Blvd Detroit, MI 48209",
+       "geocode": {
+        "city": "Detroit",
+        "name": "Southwest Detroit",
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:place:hotel",
+        "name": "Hotel",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place",
+        "name": "Place",
+        "type": "urn:tag:genre:place"
+       }
+      ],
+      "query": {
+       "affinity": 0.7823804254813898
+      }
+     },
+     {
+      "name": "MOCAD Café",
+      "entity_id": "9EE4A4C0-BA57-43DD-863D-D95AE8E4B8C9",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.9937119744021491,
+      "disambiguation": "4454 Woodward Ave Detroit, MI 48201",
+      "location": {
+       "lat": 42.3538838,
+       "lon": -83.0614822,
+       "geohash": "dpsbvyk3r0e9"
+      },
+      "properties": {
+       "short_description": "A relaxed museum café and bar with natural light, local baked goods, and a laid-back place to linger in Midtown Detroit.",
+       "address": "4454 Woodward Ave Detroit, MI 48201",
+       "geocode": {
+        "city": "Detroit",
+        "name": "Midtown",
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:place:restaurant:cafe",
+        "name": "Cafe",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:restaurant:bar",
+        "name": "Bar",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:restaurant",
+        "name": "Restaurant",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place",
+        "name": "Place",
+        "type": "urn:tag:genre:place"
+       }
+      ],
+      "query": {
+       "affinity": 0.779591519801934
+      }
+     },
+     {
+      "name": "Trinosophes",
+      "entity_id": "35551097-F80F-440E-878D-023BB9F219FD",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.9389428554129284,
+      "disambiguation": "1464 Gratiot Ave Detroit, MI 48207",
+      "location": {
+       "lat": 42.3444576,
+       "lon": -83.0377493,
+       "geohash": "dpsbyktf24tt"
+      },
+      "properties": {
+       "short_description": "Minimalist vegan-friendly American café offering locally sourced small plates, coffee and cocktails, plus live music and rotating art exhibits.",
+       "address": "1464 Gratiot Ave Detroit, MI 48207",
+       "geocode": {
+        "city": "Detroit",
+        "name": "Lafayette Park",
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:place:restaurant",
+        "name": "Restaurant",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:art_gallery",
+        "name": "Art gallery",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:tourist_attraction",
+        "name": "Tourist attraction",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place",
+        "name": "Place",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:restaurant:coffee_shop",
+        "name": "Coffee shop",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:musical_club",
+        "name": "Musical club",
+        "type": "urn:tag:genre:place"
+       }
+      ],
+      "query": {
+       "affinity": 0.7775127288275373
+      }
+     },
+     {
+      "name": "The Eightfold Collective",
+      "entity_id": "1EB29497-5ECF-4015-98C5-688290878BAF",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.7480817027295781,
+      "disambiguation": "2831 E Grand Blvd Detroit, MI 48211",
+      "location": {
+       "lat": 42.373288599999995,
+       "lon": -83.0640744,
+       "geohash": "dpscjcfd6c5p"
+      },
+      "properties": {
+       "short_description": "Detroit-based, creative-led production hub delivering adaptable, collaborative film and video production for agencies and brands with in-house talent.",
+       "address": "2831 E Grand Blvd Detroit, MI 48211",
+       "geocode": {
+        "city": "Detroit",
+        "name": null,
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [],
+      "query": {
+       "affinity": 0.7769474285979141
+      }
+     },
+     {
+      "name": "Library Street Collective",
+      "entity_id": "A9B6D4E2-0928-4BC6-916D-98457D7910E0",
+      "type": "urn:entity",
+      "subtype": "urn:entity:place",
+      "popularity": 0.9151866887609343,
+      "disambiguation": "1274 Library St Detroit, MI 48226",
+      "location": {
+       "lat": 42.334728,
+       "lon": -83.04725499999999,
+       "geohash": "dpsby4ycdtm6"
+      },
+      "properties": {
+       "short_description": "Light-filled exhibition space showcasing contemporary works by renowned and emerging artists in Detroit’s Library Street arts district.",
+       "address": "1274 Library St Detroit, MI 48226",
+       "geocode": {
+        "city": "Detroit",
+        "name": null,
+        "metro": "Detroit",
+        "country": "United States",
+        "country_code": "US",
+        "admin1_region": "Michigan",
+        "admin2_region": "Wayne County"
+       }
+      },
+      "tags": [
+       {
+        "id": "urn:tag:genre:place:art_gallery",
+        "name": "Art gallery",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place",
+        "name": "Place",
+        "type": "urn:tag:genre:place"
+       },
+       {
+        "id": "urn:tag:genre:place:tourist_attraction",
+        "name": "Tourist attraction",
+        "type": "urn:tag:genre:place"
+       }
+      ],
+      "query": {
+       "affinity": 0.7750083396586032
+      }
+     }
+    ]
+   },
+   "query": {
+    "localities": {
+     "filter": [
+      {
+       "entity_id": "56089B5C-3BAA-4424-B580-AB9787150C62",
+       "name": "Detroit",
+       "subtype": "urn:entity:locality",
+       "location": {
+        "lat": 42.38341126665237,
+        "lon": -83.10216895196113
+       },
+       "popularity": 0.9981671,
+       "disambiguation": "Detroit, Wayne County, Michigan, United States"
+      }
+     ]
+    }
+   }
+  }
+ }
+}

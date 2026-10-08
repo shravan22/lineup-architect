@@ -1,7 +1,7 @@
 import "server-only";
 import { bandLabel, capacityBand, narrowTop, widen } from "@/lib/band";
 import { qlooMode } from "@/lib/qloo/client";
-import { hasFixtures } from "@/lib/qloo/fixtures";
+import { hasFixtures, recordedOn } from "@/lib/qloo/fixtures";
 import type { AgentEvent, LlmInfo, VenueInput, Workspace } from "@/lib/types";
 import { selectProvider, type Msg } from "./llm";
 import { chooseCandidate, DEFAULT_TAKE, MIN_FIT, runTool, templatePitch, TOOL_LABELS, TOOL_SPECS } from "./tools";
@@ -15,7 +15,7 @@ const MAX_TURNS = 8;
 const BUDGET_MS = Number(process.env.AGENT_BUDGET_MS ?? 50_000);
 /** Time kept back at the end for the template pitch and closing the stream. */
 const RESERVE_MS = 1_500;
-// In sample mode responses are instant; a short pause per step keeps the
+// In recorded mode responses are instant; a short pause per step keeps the
 // streamed trace readable. It is not used in live mode.
 const FIXTURE_PACING_MS = 450;
 
@@ -72,7 +72,7 @@ async function step(name: string, args: Record<string, unknown>, by: By, { ws, e
   const id = crypto.randomUUID();
   emit({ type: "tool_start", id, name, label: TOOL_LABELS[name] ?? name, args: publicArgs(args) });
   if (qlooMode() === "fixture") await sleep(FIXTURE_PACING_MS);
-  const t0 = Date.now(); // timing excludes the sample-mode pacing pause
+  const t0 = Date.now(); // timing excludes the recorded-mode pacing pause
   try {
     const out = await withTimeout(runTool(name, args, ws), dl.left());
     emit({ type: "tool_end", id, ok: true, unavailable: out.unavailable, summary: out.summary, ms: Date.now() - t0, sources: out.sources, endpoints: out.endpoints });
@@ -263,12 +263,12 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
   const ws = emptyWorkspace(venue);
   const c: Ctx = { ws, emit, dl };
   const provider = selectProvider();
-  emit({ type: "meta", qlooMode: qlooMode(), llm: provider?.info ?? SCRIPTED_INFO });
+  emit({ type: "meta", qlooMode: qlooMode(), llm: provider?.info ?? SCRIPTED_INFO, recordedOn: recordedOn() });
 
   if (qlooMode() === "fixture" && !hasFixtures(venue.fixtureSet)) {
     emit({
       type: "needs_live",
-      text: `Sample-data mode covers only the five preset venues. Running ${venue.name} needs a live Qloo API key, and the app will not invent taste data for it.`,
+      text: `Recorded mode (no Qloo key) covers only the five preset venues. Running ${venue.name} needs a live Qloo API key, and the app will not invent taste data for it.`,
       plan: livePlan(venue),
     });
     emit({ type: "done", elapsedMs: dl.elapsed() });

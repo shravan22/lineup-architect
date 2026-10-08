@@ -18,18 +18,18 @@ export interface VenueInput {
   /** A genre phrase used to look up Qloo tag IDs via /v2/tags */
   genreHint: string;
   blurb: string;
-  /** Folder of labelled sample fixtures (presets only). Custom venues have none. */
+  /** Recorded Qloo response set (presets only). Custom venues have none. */
   fixtureSet?: string;
   /** True when the user typed this venue in the custom form. */
   custom?: boolean;
   /** True when lat/lng are unknown and must be located via Qloo /search (live only). */
   needsGeocode?: boolean;
-  /** Sample-mode test scenario (ignored in live mode). See SIMULATIONS. */
+  /** Recorded-mode test scenario (ignored in live mode). See SIMULATIONS. */
   simulate?: Simulation;
 }
 
 /**
- * Sample-mode scenarios for testing degraded live conditions:
+ * Recorded-mode scenarios for testing degraded live conditions:
  * - "403": urn:demographics and urn:tag insights answer HTTP 403, as on a hackathon
  *   key without those entity types.
  * - "no-explain": artist results come back without query.explainability.
@@ -192,7 +192,7 @@ export interface LlmInfo {
 }
 
 export type AgentEvent =
-  | { type: "meta"; qlooMode: QlooMode; llm: LlmInfo }
+  | { type: "meta"; qlooMode: QlooMode; llm: LlmInfo; recordedOn?: string }
   | { type: "thought"; text: string; by: "llm" | "scripted" | "system" }
   | { type: "decision"; by: "llm" | "scripted"; title: string; detail: string }
   | { type: "needs_live"; text: string; plan: string[] }
@@ -222,4 +222,6 @@ export type AgentEvent =
 export interface StatusInfo {
   qlooMode: QlooMode;
   llm: LlmInfo;
+  /** Date the preset fixtures were recorded from the Qloo API (recorded mode label). */
+  recordedOn?: string;
 }

@@ -64,11 +64,12 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const isCustom = venueId === CUSTOM;
   const venue = venues.find((v) => v.id === venueId);
   const sample = meta.qlooMode === "fixture";
+  const recLabel = `Recorded from the Qloo API${meta.recordedOn ? ` on ${meta.recordedOn}` : ""}`;
 
   const handle = useCallback((e: AgentEvent) => {
     switch (e.type) {
       case "meta":
-        setMeta({ qlooMode: e.qlooMode, llm: e.llm });
+        setMeta({ qlooMode: e.qlooMode, llm: e.llm, recordedOn: e.recordedOn });
         break;
       case "thought":
         setSteps((s) => [...s, { id: crypto.randomUUID(), kind: "thought", label: e.text, status: "info", by: e.by }]);
@@ -201,11 +202,13 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         </div>
         <div className="badges" aria-label="Data and agent mode">
           {sample ? (
-            <span className="badge badge-sample" title="No Qloo API key configured: preset results come from hand-written sample fixtures, not live Qloo data.">
-              Sample data
+            <span className="badge badge-sample" title="No Qloo API key on this server: preset results are real Qloo API responses recorded earlier and replayed, not live calls.">
+              {recLabel}
             </span>
           ) : (
-            <span className="badge badge-live">Live Qloo data</span>
+            <span className="badge badge-live" title="Every Qloo call in this run goes to the live hackathon API (repeat calls within 24 h may be served from the server cache, marked 'cache' in the trace).">
+              Live Qloo API
+            </span>
           )}
           <span className={`badge ${meta.llm.provider === "scripted" ? "badge-scripted" : "badge-llm"}`} title="Which planner drives the tool calls">
             {meta.llm.label}
@@ -215,9 +218,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
       {sample && (
         <p className="banner" role="note">
-          <strong>Sample data mode.</strong> No Qloo API key is configured, so every score, map cell and brand for the preset venues
-          comes from illustrative fixtures in the documented Qloo response format. They are not real Qloo results. Your own venue
-          needs a live key.
+          <strong>Recorded mode.</strong> No Qloo API key is configured on this server, so the preset venues replay real Qloo API
+          responses {meta.recordedOn ? `recorded on ${meta.recordedOn}` : "recorded earlier"}, trimmed to the fields the app reads. Scores
+          are Qloo&apos;s, but not fetched now. Your own venue needs a live key.
         </p>
       )}
 
@@ -361,7 +364,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                           {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
                           {s.sources?.map((src, i) => (
                             <span key={i} className={`src src-${src}`}>
-                              {src === "fixture" ? "sample" : src}
+                              {src === "fixture" ? "recorded" : src}
                             </span>
                           ))}
                         </div>
@@ -413,7 +416,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <li key={p}>{p}</li>
                 ))}
               </ol>
-              <p className="sub">Meanwhile, try one of the five presets to see the full flow on labelled sample data.</p>
+              <p className="sub">Meanwhile, try one of the five presets to see the full flow on recorded Qloo responses.</p>
             </div>
           )}
 
@@ -442,7 +445,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
           {ws && ws.picks.length > 0 && (
             <div className="panel">
-              <h3>Ranked acts {sample && <span className="badge badge-sample small">Sample</span>}</h3>
+              <h3>Ranked acts {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
               {ws.band && (
                 <p className="band" title="Qloo popularity is a 0-100 percentile. The capacity-to-band mapping is a heuristic.">
                   {ws.venue.capacity}-cap room: target popularity <strong>{bandLabel(ws.band.target)}</strong>
@@ -467,7 +470,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               {ws.unavailable.includes("taste_profile") && (
                 <p className="unavail-note" role="note">
                   Venue taste profile unavailable on this Qloo key (urn:tag returned 403). Acts are ranked without the shared-tag check.
-                  {ws.venue.simulate === "403" && " (Simulated 403 in sample mode.)"}
+                  {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
                 </p>
               )}
               {ws.tasteTags.length > 0 && (
@@ -530,7 +533,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           {ws && ws.heatmap.length > 0 && (
             <div className="panel">
               <h3>
-                Where the crowd is {sample && <span className="badge badge-sample small">Sample</span>}
+                Where the crowd is {sample && <span className="badge badge-sample small">Recorded</span>}
               </h3>
               <p className="sub">Local taste affinity for {ws.heatmapSubject.join(", ")} around {ws.venue.city}.</p>
               <AffinityMap venue={ws.venue} points={ws.heatmap} places={ws.places} />
@@ -552,14 +555,14 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               <p className="unavail-note" role="note">
                 Unavailable on the hackathon key: Qloo answered 403 for audience demographics (urn:demographics), so age and gender
                 skew is not shown. The rest of the plan and the pitch do not depend on it.
-                {ws.venue.simulate === "403" && " (Simulated 403 in sample mode.)"}
+                {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
               </p>
             </div>
           )}
 
           {ws && ws.demographics.length > 0 && (
             <div className="panel">
-              <h3>Audience profile {sample && <span className="badge badge-sample small">Sample</span>}</h3>
+              <h3>Audience profile {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
               <p className="sub">Age and gender skew of fans compared with the average Qloo audience (Qloo affinity score: 0 = average, positive = over-indexes).</p>
               <div className="demo-grid">
                 {ws.demographics.map((d) => (
@@ -584,7 +587,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           {ws && (ws.brands.length > 0 || ws.places.length > 0) && (
             <div className="panel two-col">
               <div>
-                <h3>Sponsor shortlist {sample && <span className="badge badge-sample small">Sample</span>}</h3>
+                <h3>Sponsor shortlist {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
                 <ol className="list">
                   {ws.brands.map((b) => (
                     <li key={b.entityId}>
@@ -597,7 +600,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 </ol>
               </div>
               <div>
-                <h3>Local partner spots {sample && <span className="badge badge-sample small">Sample</span>}</h3>
+                <h3>Local partner spots {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
                 <ol className="list">
                   {ws.places.map((p) => (
                     <li key={p.entityId}>
@@ -621,7 +624,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <button onClick={() => window.print()}>Print / PDF</button>
                 </div>
               </div>
-              {sample && <p className="pitch-warn">Built from SAMPLE data. Do not send.</p>}
+              {sample && <p className="pitch-warn">Built from recorded Qloo responses ({meta.recordedOn ?? "earlier run"}), not a live call. Re-run live before sending.</p>}
               <h4>{ws.pitch.headline}</h4>
               <p>{ws.pitch.summary}</p>
               <h5>Recommended acts</h5>
@@ -635,7 +638,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               <h5>Sponsor angle</h5>
               <p>{ws.pitch.sponsorAngle}</p>
               <p className="provenance">
-                Data: Qloo {sample ? "(sample fixtures)" : "Insights API"}. Text:{" "}
+                Data: Qloo Insights API{sample ? `, ${recLabel.replace("Recorded from the Qloo API", "recorded")}` : ", live"}. Text:{" "}
                 {ws.pitch.author === "llm" ? `written by ${meta.llm.label} from the Qloo results` : "deterministic template"}. Affinity
                 scores describe correlations in taste, not predictions about individuals.
               </p>

@@ -31,7 +31,9 @@ export interface RawEntity {
 
 export function parseTag(t: Any): TagInfo | null {
   const id = str(t?.id) ?? str(t?.tag_id);
-  const name = str(t?.name);
+  // Live tag names come with stray spaces and mixed case (" Techno", "instrumental  hip hop").
+  const raw = str(t?.name)?.replace(/\s+/g, " ").trim();
+  const name = raw && raw === raw.toLowerCase() ? raw.replace(/\b[a-z]/g, (c) => c.toUpperCase()) : raw;
   if (!id || !name) return null;
   return { id, name, type: str(t?.type) ?? str(t?.subtype), affinity: num(t?.query?.affinity) };
 }
@@ -78,9 +80,10 @@ export function parseEntity(e: Any): RawEntity | null {
 // are always included. The top-level `query.explainability` holds the average
 // influence per input entity over top-N subsets (top 3, 5, 10, all). If it cannot
 // be computed, `query.explainability.warning` is set and results return normally.
-// Key names below follow a recorded hackathon response in a public 2026 project
-// (Inference: "signal.interests.entities": [{entity_id, score}] per result and
-// effect_on_top{N}_recs: [{entity_id, avg_score}] at the top level). Verify live.
+// Verified live on 2026-10-06 for urn:entity:artist: per result
+// query.explainability["signal.interests.entities"] = [{entity_id, score}] (scores
+// sum to ~1), top level query.explainability["signal.interests.entities"] =
+// {effect_on_top3_recs, effect_on_top5_recs, effect_on_top10_recs, effect_on_all_recs}.
 
 function explainList(v: Any, scoreKey: "score" | "avg_score"): { entityId: string; score: number }[] {
   if (!Array.isArray(v)) return [];
@@ -118,15 +121,16 @@ export function parseExplainSummary(data: Any): { subset: string; drivers: { ent
 }
 
 /**
- * The locality Qloo matched for a location query. Docs: a single
- * filter.location.query / signal.location.query adds `query.locality.signal`
- * (deep dive) or `query.localities.filter` (heatmap example). Absent means the
- * location parameter was not applied (Qloo silently ignores params a filter.type
- * does not support).
+ * The locality Qloo matched for a location query. Live (2026-10-06):
+ * signal.location.query echoes `query.localities.signal` {name, location{lat,lon}}
+ * (artists and brands too, despite the parameter guide), filter.location.query
+ * echoes `query.localities.filter` as an array. Absent means the location
+ * parameter was not applied (Qloo silently ignores unsupported params).
  */
 export function matchedLocality(data: Any): string | undefined {
   const q = data?.query ?? data?.results?.query;
-  const l = q?.locality?.signal ?? q?.locality?.filter ?? q?.localities?.signal ?? q?.localities?.filter;
+  const first = (v: Any) => (Array.isArray(v) ? v[0] : v);
+  const l = first(q?.localities?.signal ?? q?.localities?.filter ?? q?.locality?.signal ?? q?.locality?.filter);
   return str(l?.name) ?? str(l?.disambiguation) ?? (l ? "matched" : undefined);
 }
 

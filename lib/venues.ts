@@ -3,7 +3,8 @@ import type { CustomVenueRequest, VenueInput } from "./types";
 
 // Preset venues for the demo. Venue names are fictional; the artist names are
 // real public acts used only as taste signals for Qloo. Each preset has a
-// labelled SAMPLE fixture file (fixtures/<id>.json) so it runs without a key.
+// fixture of real Qloo responses recorded from the hackathon API (fixtures/<id>.json),
+// so it runs without a key.
 export const SAMPLE_VENUES: VenueInput[] = [
   {
     id: "detroit-gasworks",

@@ -69,7 +69,7 @@ export default function AffinityMap({ venue, points, places }: Props) {
       }
       if (located) {
         L.circleMarker([venue.lat, venue.lng], { radius: 9, color: "#111", weight: 3, fillColor: "#22c55e", fillOpacity: 1 })
-          .bindTooltip(`${venue.name} (venue)`, { permanent: false })
+          .bindTooltip(venue.custom ? `${venue.city} city centre (venue address not given)` : `${venue.name} (venue)`, { permanent: false })
           .addTo(map);
       }
       map.fitBounds(bounds.pad(0.1));
