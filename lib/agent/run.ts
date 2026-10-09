@@ -48,10 +48,21 @@ class OutOfTime extends Error {
   }
 }
 
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  if (ms <= 0) return Promise.reject(new OutOfTime());
+/** The LLM used up its share of the budget; the scripted planner takes over. */
+class LlmTooSlow extends Error {
+  constructor() {
+    super("LLM too slow");
+  }
+}
+
+// Time kept back for the scripted planner to finish a live run (~5 s measured) after
+// handing over from a slow or failing LLM. Gemini 3.8 Flash took 9-29 s per call live.
+const HANDOVER_MS = 14_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, err: () => Error = () => new OutOfTime()): Promise<T> {
+  if (ms <= 0) return Promise.reject(err());
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new OutOfTime()), ms);
+    const t = setTimeout(() => reject(err()), ms);
     p.then(
       (v) => (clearTimeout(t), resolve(v)),
       (e) => (clearTimeout(t), reject(e)),
@@ -241,7 +252,7 @@ function systemPrompt(v: VenueInput) {
     "- Pick which acts to map and profile (default: the top 3 that fit the room).",
     "- recommend_artists returns Qloo explainability (driven_by: which past headliner drove each act, 0..1). Cite it in pick_rationales when present.",
     "- If a tool reports unavailable (HTTP 403, not enabled for this key), do not retry it; continue and finish the pitch without that section.",
-    "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals.",
+    "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals. Never promise outcomes such as attendance, sell-outs or revenue (no 'guarantees', 'packed', 'sure-fire'); say what the Qloo data shows. Only call local affinity strong if the heatmap result shows hot cells concentrated near the venue.",
     `Venue: ${v.name}, ${v.city}, capacity ${v.capacity}. ${v.blurb}`,
     `Past headliners: ${v.headliners.join(", ")}.${v.genreHint ? ` Genre focus: ${v.genreHint}.` : ""}`,
   ].join("\n");
@@ -261,11 +272,22 @@ export function livePlan(v: VenueInput): string[] {
   ];
 }
 
+/** Switches the badge to the scripted planner (truthfully), lets it finish, then says why. */
+async function handover(c: Ctx, llmLabel: string, why: string, notice: string) {
+  c.emit({ type: "meta", qlooMode: qlooMode(), llm: { provider: "scripted", label: `Scripted planner (${llmLabel} ${why})` }, recordedOn: recordedOn() });
+  c.emit({ type: "thought", by: "system", text: `Handing over to the scripted planner: ${llmLabel} ${why}.` });
+  if (!c.ws.pitch) await runScripted(c);
+  c.emit({ type: "notice", text: notice });
+}
+
 export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
   const dl = new Deadline(BUDGET_MS);
   const ws = emptyWorkspace(venue);
   const c: Ctx = { ws, emit, dl };
   const provider = selectProvider();
+  const llmMs: number[] = []; // per model call latency, reported in the done event
+  const llmStart = Date.now();
+  let llmTries = 0; // includes a call abandoned at the handover deadline
   emit({ type: "meta", qlooMode: qlooMode(), llm: provider?.info ?? SCRIPTED_INFO, recordedOn: recordedOn() });
 
   if (qlooMode() === "fixture" && !hasFixtures(venue.fixtureSet)) {
@@ -289,7 +311,12 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
       try {
         for (let turn = 0; turn < MAX_TURNS && !ws.pitch; turn++) {
           if (dl.expired()) throw new OutOfTime();
-          const out = await withTimeout(provider.next(systemPrompt(venue), messages, TOOL_SPECS), dl.left());
+          const llmLeft = dl.left() - HANDOVER_MS;
+          if (llmLeft < 3_000) throw new LlmTooSlow();
+          const tCall = Date.now();
+          llmTries++;
+          const out = await withTimeout(provider.next(systemPrompt(venue), messages, TOOL_SPECS), llmLeft, () => new LlmTooSlow());
+          llmMs.push(Date.now() - tCall);
           if (out.text) emit({ type: "thought", by: "llm", text: out.text });
           messages.push({ role: "assistant", text: out.text, toolCalls: out.toolCalls, raw: out.raw });
           if (!out.toolCalls.length) break;
@@ -297,20 +324,17 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
           const res = await Promise.all(out.toolCalls.map((call) => step(call.name, call.args, "llm", c)));
           messages.push({ role: "tool", results: out.toolCalls.map((call, i) => ({ id: call.id, name: call.name, content: res[i].content, isError: !res[i].ok })) });
         }
-        if (!ws.pitch) emit({ type: "notice", text: `The model stopped before finishing (turn cap ${MAX_TURNS}). The scripted planner fills the remaining steps.` });
+        if (!ws.pitch) await handover(c, provider.info.label, "stopped early", `The model stopped before finishing (turn cap ${MAX_TURNS}); the scripted planner finished the run.`);
       } catch (e) {
         if (e instanceof OutOfTime) throw e;
-        const quota = isQuotaError(e);
-        // The badge must show who is actually planning now.
-        emit({
-          type: "meta",
-          qlooMode: qlooMode(),
-          llm: { provider: "scripted", label: `Scripted planner (${provider.info.label} ${quota ? "quota reached" : "failed"})` },
-          recordedOn: recordedOn(),
-        });
-        if (!quota) emit({ type: "notice", text: `LLM unavailable (${provider.info.label}: ${llmErrorText(e)}). Finishing with the scripted planner.` });
-        if (!ws.pitch) await runScripted(c);
-        if (quota) emit({ type: "notice", text: `LLM quota reached (${provider.info.label}: ${llmErrorText(e)}), scripted planner finished the run.` });
+        const label = provider.info.label;
+        if (e instanceof LlmTooSlow) {
+          await handover(c, label, "too slow", `LLM too slow (${label} used ${((Date.now() - llmStart) / 1000).toFixed(0)} s over ${llmTries} call${llmTries === 1 ? "" : "s"}, the last one timed out); scripted planner finished the run.`);
+        } else if (isQuotaError(e)) {
+          await handover(c, label, "quota reached", `LLM quota reached (${label}: ${llmErrorText(e)}), scripted planner finished the run.`);
+        } else {
+          await handover(c, label, "failed", `LLM unavailable (${label}: ${llmErrorText(e)}); scripted planner finished the run.`);
+        }
       }
       if (!ws.pitch) await runScripted(c);
     }
@@ -324,5 +348,5 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
     await writeTemplatePitch({ ...c, dl: new Deadline(RESERVE_MS + 2_000) });
     emit({ type: "workspace", workspace: ws });
   }
-  emit({ type: "done", partial: ws.partial, elapsedMs: dl.elapsed() });
+  emit({ type: "done", partial: ws.partial, elapsedMs: dl.elapsed(), llmCalls: provider ? { n: llmTries, ms: llmMs } : undefined });
 }

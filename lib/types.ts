@@ -216,7 +216,7 @@ export type AgentEvent =
     }
   | { type: "workspace"; workspace: Workspace }
   | { type: "notice"; text: string }
-  | { type: "done"; partial?: boolean; elapsedMs?: number }
+  | { type: "done"; partial?: boolean; elapsedMs?: number; llmCalls?: { n: number; ms: number[] } }
   | { type: "error"; message: string };
 
 export interface StatusInfo {

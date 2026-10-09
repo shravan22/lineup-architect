@@ -468,7 +468,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           imageUrl: e.imageUrl,
           shortDescription: e.description,
           tags: e.tags,
-          sharedTags: e.tags.filter((t) => tasteIds.has(t.id) || tasteNames.has(t.name.toLowerCase())).map((t) => t.name),
+          sharedTags: dedupeNames(e.tags.filter((t) => tasteIds.has(t.id) || tasteNames.has(t.name.toLowerCase())).map((t) => t.name)),
           drawFit: drawFit(e.popularity, target),
           drivenBy: seeds.length > 1 ? drivers(e.explain, ws) : undefined,
         }));
@@ -608,6 +608,17 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
   const dLng = ((bLng - aLng) * Math.PI) / 180;
   const s = Math.sin(dLat / 2) ** 2 + Math.cos((aLat * Math.PI) / 180) * Math.cos((bLat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/** Drops near-duplicate tag names ("Hip - Hop" vs "Hip Hop"), keeping the first. */
+function dedupeNames(names: string[]): string[] {
+  const seen = new Set<string>();
+  return names.filter((n) => {
+    const k = n.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 export const HOT_KM = 2;

@@ -1,6 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, type Content, type Part } from "@google/genai";
 import type { LlmInfo } from "@/lib/types";
 import type { ToolSpec } from "./tools";
 
@@ -36,9 +36,11 @@ export interface LlmProvider {
 }
 
 export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001";
-// Latest stable Flash model with a free tier, per https://ai.google.dev/gemini-api/docs/models
-// and /pricing (checked 2026-10-08).
-export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+// Free-tier model (https://ai.google.dev/gemini-api/docs/pricing, checked 2026-10-08).
+// Measured live 2026-10-08 on the Detroit preset: gemini-3.8-flash took 20-29 s on its
+// first call and missed the budget twice; gemini-3.5-flash-lite finished in 9 s
+// (5 calls, 0.8-2.5 s each). LLM_MODEL overrides.
+export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 export function selectProvider(): LlmProvider | null {
   const want = (process.env.LLM_PROVIDER ?? "").trim().toLowerCase();
@@ -61,7 +63,9 @@ export function isQuotaError(e: unknown): boolean {
 /** Short error text for the trace. Never includes request details or keys. */
 export function llmErrorText(e: unknown): string {
   const status = (e as { status?: unknown })?.status;
-  if (typeof status === "number") return `HTTP ${status}`;
+  // Google errors carry a status word (UNAVAILABLE, RESOURCE_EXHAUSTED); keep only that.
+  const word = e instanceof Error ? e.message.match(/"status"\s*:\s*"([A-Z_]+)"/)?.[1] : undefined;
+  if (typeof status === "number") return `HTTP ${status}${word ? ` ${word}` : ""}`;
   return e instanceof Error ? e.name || "error" : "error";
 }
 
@@ -91,15 +95,27 @@ function gemini(): LlmProvider {
   return {
     info: { provider: "gemini", model, label: `Gemini (${model})` },
     async next(system, messages, tools) {
-      const res = await ai.models.generateContent({
+      const call = () => ai.models.generateContent({
         model,
         contents: messages.map(toContent),
         config: {
           systemInstruction: system,
           maxOutputTokens: 1500,
+          // Default for 3.x Flash is "medium"; low keeps planning turns fast (GEMINI_THINKING overrides).
+          thinkingConfig: { thinkingLevel: (process.env.GEMINI_THINKING?.toUpperCase() as ThinkingLevel) || ThinkingLevel.LOW },
           tools: [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }],
         },
       });
+      let res;
+      try {
+        res = await call();
+      } catch (e) {
+        // 500/503 (model overloaded) is usually transient: one retry. 429 is not retried.
+        const status = (e as { status?: unknown })?.status;
+        if (status !== 500 && status !== 503) throw e;
+        await new Promise((r) => setTimeout(r, 1500));
+        res = await call();
+      }
       const content = res.candidates?.[0]?.content;
       const parts = content?.parts ?? [];
       const text = parts
