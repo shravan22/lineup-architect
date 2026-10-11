@@ -12,7 +12,7 @@ export function pitchMarkdown(ws: Workspace, meta: StatusInfo): string {
     `# ${p.headline}`,
     "",
     ws.partial ? "> PARTIAL: the agent hit its time budget; some sections may be missing.\n" : "",
-    sample ? "> SAMPLE DATA: generated from illustrative fixtures, not live Qloo results. Do not send.\n" : "",
+    sample ? `> RECORDED DATA: replayed Qloo API responses${meta.recordedOn ? ` recorded on ${meta.recordedOn}` : ""}, not a live call. Re-run live before sending.\n` : "",
     `**Venue:** ${ws.venue.name}, ${ws.venue.city} (${ws.venue.capacity} capacity)  `,
     `**Past headliners:** ${ws.seeds.map((s) => s.name).join(", ")}  `,
     ws.band ? `**Draw-fit band:** Qloo popularity ${bandLabel(ws.band.target)} for this capacity (searched ${bandLabel(ws.band.used)})` : "",
@@ -43,8 +43,8 @@ export function pitchMarkdown(ws: Workspace, meta: StatusInfo): string {
     ...ws.places.map((x) => `- ${x.name}${x.address ? `, ${x.address}` : ""} (affinity ${pct(x.affinity)})`),
     "",
     "---",
-    `Data: Qloo ${sample ? "(sample fixtures)" : "Insights API"}. Text: ${p.author === "llm" ? meta.llm.label : "deterministic template"}.`,
-    "Affinity scores describe correlations in taste, not predictions about individuals.",
+    `Data: Qloo Insights API${sample ? ` (recorded${meta.recordedOn ? ` ${meta.recordedOn}` : ""})` : ", live"}. Text: ${p.author === "llm" ? meta.llm.label : "deterministic template"}.`,
+    "Affinity scores describe correlations in taste, not predictions about individuals or ticket sales.",
   ];
   return lines.join("\n");
 }

@@ -20,7 +20,7 @@ function kmBetween(aLat: number, aLng: number, bLat: number, bLng: number) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// Colour ramp for affinity 0..1 (light yellow -> deep red), readable on a light basemap.
+// Colour ramp for affinity 0..1 (light yellow -> deep red), readable on the darkened basemap.
 export function affinityColor(a: number): string {
   if (a >= 0.9) return "#a50026";
   if (a >= 0.8) return "#d73027";
@@ -56,19 +56,19 @@ export default function AffinityMap({ venue, points, places }: Props) {
           radius: 650,
           stroke: false,
           fillColor: affinityColor(p.affinity),
-          fillOpacity: 0.55,
+          fillOpacity: 0.6,
         })
-          .bindTooltip(`Affinity ${Math.round(p.affinity * 100)}`)
+          .bindTooltip(`Taste concentration ${Math.round(p.affinity * 100)}/100 (Qloo heatmap affinity)`)
           .addTo(map);
       }
       for (const pl of places) {
         if (pl.lat === undefined || pl.lng === undefined) continue;
-        L.circleMarker([pl.lat, pl.lng], { radius: 6, color: "#3b1f8f", weight: 2, fillColor: "#ffffff", fillOpacity: 1 })
+        L.circleMarker([pl.lat, pl.lng], { radius: 6, color: "#ff5a36", weight: 3, fillColor: "#ffffff", fillOpacity: 1 })
           .bindTooltip(`${pl.name} (partner spot)`)
           .addTo(map);
       }
       if (located) {
-        L.circleMarker([venue.lat, venue.lng], { radius: 9, color: "#111", weight: 3, fillColor: "#22c55e", fillOpacity: 1 })
+        L.circleMarker([venue.lat, venue.lng], { radius: 9, color: "#ffffff", weight: 3, fillColor: "#22c55e", fillOpacity: 1 })
           .bindTooltip(venue.custom ? `${venue.city} city centre (venue address not given)` : `${venue.name} (venue)`, { permanent: false })
           .addTo(map);
       }
@@ -85,7 +85,7 @@ export default function AffinityMap({ venue, points, places }: Props) {
       ref={el}
       className="map"
       role="img"
-      aria-label={`Map of ${venue.city} showing ${points.length} areas shaded by taste affinity, the venue, and ${places.length} partner spots`}
+      aria-label={`Map of ${venue.city} showing ${points.length} areas shaded by how concentrated this taste is, the venue, and ${places.length} partner spots`}
     />
   );
 }
