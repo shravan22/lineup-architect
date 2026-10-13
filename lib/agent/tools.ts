@@ -1,5 +1,5 @@
 import "server-only";
-import { bandLabel, capacityBand, drawFit, inBand, MIN_BAND_WIDTH } from "@/lib/band";
+import { bandLabel, capacityBand, drawFit, MIN_BAND_WIDTH, searchBand } from "@/lib/band";
 import { qloo, QlooError, type QlooCtx, type QlooResult } from "@/lib/qloo/client";
 import {
   parseDemographics,
@@ -13,7 +13,8 @@ import {
   toPlace,
   type RawEntity,
 } from "@/lib/qloo/normalize";
-import type { ArtistPick, DataSource, Driver, PendingChoice, Pitch, PopBand, UnavailableSection, Workspace } from "@/lib/types";
+import type { ArtistPick, DataSource, Driver, PendingChoice, Pitch, PlacePick, PopBand, UnavailableSection, Workspace } from "@/lib/types";
+import { NEAR_LIFT_MIN } from "@/lib/ui";
 
 // Agent tools. Each tool calls Qloo (or the labelled recorded Qloo responses), writes
 // structured results into the shared Workspace (which the UI renders), and
@@ -151,7 +152,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     name: "write_pitch",
     label: "Draft booking pitch",
     description:
-      "Finish by writing the one-page booking pitch. Only cite facts returned by earlier tools. Prefer acts whose draw fit is 'fits'. Do not state causation or claims about individuals.",
+      "Finish by writing the one-page booking pitch. Only cite facts returned by earlier tools. Prefer acts whose draw_fit is 'fits' (in this room's tier); call others 'stretch picks'. Do not state causation, claims about individuals, or outcomes (attendance, sales, sell-outs, guarantees). Only say local taste is concentrated near the venue if near_venue_lift > 1.1. The draft is checked against the data and replaced by a template if it overclaims.",
     parameters: {
       type: "object",
       properties: {
@@ -190,6 +191,11 @@ function seedIds(ws: Workspace): string[] {
     throw new Error(`Headliners still ambiguous: ${ws.pending.map((p) => p.query).join(", ")}. Call resolve_headliner first.`);
   if (!ws.seeds.length) throw new Error("No headliners resolved yet. Call search_artist first.");
   return ws.seeds.map((s) => s.entityId);
+}
+
+/** Acts in the query band at or below the room's ceiling (in tier, or under-draw after widening). */
+export function bookableCount(picks: ArtistPick[], used: PopBand, target: PopBand): number {
+  return picks.filter((p) => p.popularity !== undefined && p.popularity >= used.min && p.popularity <= target.max).length;
 }
 
 /** Acts that fit the room first, then by affinity. Used for defaults and the pitch. */
@@ -435,8 +441,9 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const take = clampInt(args.take, DEFAULT_TAKE, 5, 15);
       const seeds = seedIds(ws);
       const target = ws.band?.target ?? capacityBand(ws.venue.capacity);
-      let used: PopBand = { min: unit(args.popularity_min, target.min), max: unit(args.popularity_max, target.max) };
-      if (used.max - used.min < MIN_BAND_WIDTH) used = target;
+      const dflt = searchBand(ws.venue.capacity);
+      let used: PopBand = { min: unit(args.popularity_min, dflt.min), max: unit(args.popularity_max, dflt.max) };
+      if (used.max - used.min < MIN_BAND_WIDTH) used = dflt;
       const near = await insightsNearVenue(
         {
           "filter.type": "urn:entity:artist",
@@ -472,43 +479,86 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           drawFit: drawFit(e.popularity, target),
           drivenBy: seeds.length > 1 ? drivers(e.explain, ws) : undefined,
         }));
-      const picks = bookableFirst(all).slice(0, take);
-      // Count against the queried band on our side too: Qloo silently ignores invalid params.
-      const fitting = picks.filter((p) => inBand(p.popularity, used)).length;
-      const changed = used.min !== target.min || used.max !== target.max;
-      const prev = ws.band?.used ?? target;
-      ws.picks = picks;
+      let picks = bookableFirst(all).slice(0, take);
+      const prev = ws.band ? { picks: ws.picks, band: ws.band, explain: ws.explain } : undefined;
+      // Capping the top drops stretch acts; keep the two strongest as labelled reach options.
+      if (prev && used.max < prev.band.used.max) {
+        const have = new Set(picks.map((p) => p.entityId));
+        const carry = prev.picks
+          .filter((p) => p.drawFit === "stretch" && !have.has(p.entityId))
+          .sort((a, b) => b.affinity - a.affinity)
+          .slice(0, 2);
+        picks = [...picks, ...carry];
+      }
+      const changed = !!prev && (used.min !== prev.band.used.min || used.max !== prev.band.used.max);
       const agg = parseExplainSummary(r.data);
       const aggDrivers = seeds.length > 1 ? drivers(agg?.drivers, ws) : undefined;
-      ws.explain = agg && aggDrivers ? { subset: agg.subset, drivers: aggDrivers } : undefined;
-      const explained = picks.filter((p) => p.drivenBy?.length).length;
-      ws.band = { target, used, history: [...(ws.band?.history ?? []), `${bandLabel(used)}: ${fitting} act${fitting === 1 ? "" : "s"}`] };
+
+      // A re-query only counts as a decision if it changes the shortlist (at least 2 new acts).
+      let decisions: ToolOutcome["decisions"];
+      let reverted = false;
+      if (prev && changed) {
+        const before = new Set(prev.picks.map((p) => p.entityId));
+        const after = new Set(picks.map((p) => p.entityId));
+        const added = picks.filter((p) => !before.has(p.entityId));
+        const dropped = prev.picks.filter((p) => !after.has(p.entityId));
+        const top3 = (l: ArtistPick[]) => bookableFirst(l).slice(0, 3).map((p) => p.name).join(", ");
+        if (added.length < 2) {
+          reverted = true;
+          decisions = [
+            {
+              title: `Kept the ${bandLabel(prev.band.used)} results`,
+              detail: `Re-querying ${bandLabel(used)} added only ${added.length} new act${added.length === 1 ? "" : "s"} to the shortlist, so the earlier results stand.`,
+            },
+          ];
+        } else {
+          const why = typeof args.reason === "string" && args.reason.trim() ? String(args.reason).slice(0, 400) : "Band changed by the planner.";
+          decisions = [
+            {
+              title: `Popularity band ${bandLabel(prev.band.used)} -> ${bandLabel(used)}`,
+              detail: `${why} Result: ${added.length} new acts (${added.slice(0, 4).map((p) => p.name).join(", ")})${dropped.length ? `, dropped ${dropped.slice(0, 4).map((p) => p.name).join(", ")}` : ""}. Top 3 before: ${top3(prev.picks)}; after: ${top3(picks)}.`,
+            },
+          ];
+        }
+      }
+      if (reverted && prev) {
+        ws.picks = prev.picks;
+        ws.explain = prev.explain;
+        ws.band = { ...prev.band, history: [...prev.band.history, `${bandLabel(used)}: reverted (shortlist barely changed)`] };
+      } else {
+        ws.picks = picks;
+        ws.explain = agg && aggDrivers ? { subset: agg.subset, drivers: aggDrivers } : undefined;
+      }
+      const cur = ws.picks;
+      const curBand = reverted && prev ? prev.band.used : used;
+      const inTier = cur.filter((p) => p.drawFit === "fits").length;
+      const stretch = cur.filter((p) => p.drawFit === "stretch").length;
+      if (!reverted) ws.band = { target, used, history: [...(ws.band?.history ?? []), `${bandLabel(used)}: ${inTier} in tier, ${stretch} stretch`] };
+      const explained = cur.filter((p) => p.drivenBy?.length).length;
       const advice =
-        fitting < MIN_FIT
-          ? `Only ${fitting} acts are inside ${bandLabel(used)}. Widen the band (e.g. popularity_min -0.06, popularity_max +0.015) and call recommend_artists again.`
-          : picks.length >= take && ws.venue.capacity <= 400 && !changed
-            ? "The band is crowded for a small room. Consider lowering popularity_max so fees stay bookable."
-            : "Enough acts fit the room.";
-      const decisions =
-        changed && typeof args.reason === "string" && args.reason.trim()
-          ? [{ title: `Popularity band ${bandLabel(prev)} -> ${bandLabel(used)}`, detail: String(args.reason).slice(0, 400) }]
-          : undefined;
+        inTier < MIN_FIT && stretch > 0 && curBand.max > target.max
+          ? `Only ${inTier} acts are inside the room's tier ${bandLabel(target)}; ${stretch} are stretch picks. Cap popularity_max at ${target.max} and call recommend_artists again to surface more acts the room can book.`
+          : bookableCount(cur, curBand, target) < MIN_FIT
+            ? `Only ${bookableCount(cur, curBand, target)} acts are at or below the room's ceiling. Widen downwards (popularity_min about ${Math.max(0, Math.round((curBand.min - 0.06) * 1000) / 1000)}) and call recommend_artists again.`
+            : "Enough acts fit the room; no re-query needed.";
       return {
-        summary: `Band ${bandLabel(used)}${changed ? ` (room target ${bandLabel(target)})` : ""}, ${locNote(near, loc)}: ${fitting} in band; top: ${picks
+        summary: `${reverted ? `Re-query ${bandLabel(used)} barely changed the list; kept ${bandLabel(curBand)}` : `Band ${bandLabel(used)}`} (room tier ${bandLabel(target)}), ${locNote(near, loc)}: ${inTier} in tier, ${stretch} stretch; top: ${bookableFirst(cur)
           .slice(0, 3)
           .map((p) => `${p.name} ${pct(p.affinity)}`)
-          .join(", ")}${explained ? `; explainability on ${explained}/${picks.length}${ws.explain ? `, ${ws.explain.subset} driven by ${driverText(ws.explain.drivers)}` : ""}` : ""}`,
+          .join(", ")}${explained ? `; explainability on ${explained}/${cur.length}${ws.explain ? `, ${ws.explain.subset} driven by ${driverText(ws.explain.drivers)}` : ""}` : ""}`,
         forModel: JSON.stringify({
           capacity: ws.venue.capacity,
-          target_band: target,
+          room_tier_band: target,
           query_band: used,
-          returned: picks.length,
-          in_band: fitting,
+          reverted: reverted || undefined,
+          returned: cur.length,
+          in_tier: inTier,
+          stretch,
           location: locNote(near, loc),
           advice,
           explainability_note: "driven_by = Qloo feature.explainability: share of each past headliner's influence on the pick (0..1). Cite it in pick_rationales when present.",
           headliner_influence: ws.explain ? { subset: ws.explain.subset, drivers: ws.explain.drivers.map((d) => ({ headliner: d.name, avg_score: d.score })) } : undefined,
-          acts: picks.map((p) => ({
+          acts: cur.map((p) => ({
             name: p.name,
             affinity: p.affinity,
             popularity: p.popularity,
@@ -526,11 +576,21 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const { ids, names } = pickIds(ws, args.artist_names);
       const r = await qloo.insights({ "filter.type": "urn:heatmap", "signal.interests.entities": ids.join(","), "filter.location.query": loc }, ctx);
       ws.heatmap = parseHeatmap(r.data);
-      ws.heatmapSubject = names;
+      // Recorded mode may replay a heatmap recorded for other acts: name those, not the request.
+      const mapped = r.standIn?.names ?? names;
+      ws.heatmapSubject = mapped;
       const hs = hotspots(ws);
       return {
-        summary: `${ws.heatmap.length} map cells for ${names.join(", ")}${hs ? `; ${hs.hotPct}% of the hottest fifth of cells are within ${HOT_KM} km of ${anchor(ws)} (vs ${hs.allPct}% of all cells)` : ""}`,
-        forModel: JSON.stringify({ cells: ws.heatmap.length, hottest_fifth_within_2km_pct: hs?.hotPct, all_cells_within_2km_pct: hs?.allPct, mapped: names }),
+        summary: `${ws.heatmap.length} map cells for ${mapped.join(", ")}${r.standIn ? ` (recorded mode: the closest recorded call, not ${names.join(", ")})` : ""}${hs ? `; ${hs.hotPct}% of the hottest fifth of cells are within ${HOT_KM} km of ${anchor(ws)} vs ${hs.allPct}% of all cells (${hs.lift !== undefined ? `${hs.lift.toFixed(2)}x: ${hs.concentrated ? "concentrated near the venue" : "spread across the city"}` : "no comparison"})` : ""}`,
+        forModel: JSON.stringify({
+          cells: ws.heatmap.length,
+          hottest_fifth_within_2km_pct: hs?.hotPct,
+          all_cells_within_2km_pct: hs?.allPct,
+          near_venue_lift: hs?.lift,
+          ...(r.standIn ? { note: `Recorded data: this heatmap was recorded for ${mapped.join(", ")}, not the requested acts.` } : {}),
+          reading: hs ? (hs.concentrated ? "Hot cells are concentrated near the venue." : "Taste is spread across the city, not concentrated near the venue. Do not claim strong local affinity.") : "No comparison possible.",
+          mapped,
+        }),
         ...srcs(r),
       };
     }
@@ -540,10 +600,11 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       const r = await optional("demographics", ws, () => qloo.insights({ "filter.type": "urn:demographics", "signal.interests.entities": ids.join(",") }, ctx));
       if (!r) return unavailableOutcome("audience_demographics", "urn:demographics", "The audience section shows a note instead of age and gender skew.", sim === "403");
       const names = new Map(ws.picks.map((p) => [p.entityId, p.name]));
+      r.standIn?.ids.forEach((id, i) => names.set(id, r.standIn!.names[i]));
       ws.demographics = parseDemographics(r.data, names);
       const top = ws.demographics.map((d) => `${d.name}: ${topBucket(d.age)}`);
       return {
-        summary: top.length ? `Strongest age skew: ${top.join("; ")}` : "No demographic data returned",
+        summary: top.length ? `Strongest age skew: ${top.join("; ")}${r.standIn ? " (recorded mode: the closest recorded call)" : ""}` : "No demographic data returned",
         forModel: JSON.stringify(ws.demographics.map((d) => ({ artist: d.name, age_skew: d.age, gender_skew: d.gender }))),
         ...srcs(r),
       };
@@ -557,7 +618,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
       ws.brands = parseEntities(r.data).map(toBrand).sort((a, b) => b.affinity - a.affinity).slice(0, take);
       ws.brandsLocality = near.locality;
       return {
-        summary: `${ws.brands.length} brands (${locNote(near, loc)}); top: ${ws.brands.slice(0, 3).map((b) => b.name).join(", ")}`,
+        summary: `${ws.brands.length} brands (${locNote(near, loc)}); top: ${ws.brands.slice(0, 3).map((b) => b.name).join(", ")}${r.standIn ? ` (recorded mode: recorded for ${r.standIn.names.join(", ")})` : ""}`,
         forModel: JSON.stringify(ws.brands.map((b) => ({ name: b.name, affinity: b.affinity, category: b.category }))),
         ...srcs(r),
       };
@@ -565,13 +626,15 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
 
     case "partner_places": {
       const take = clampInt(args.take, 6, 3, 8);
+      // Over-fetch, then keep music-relevant spots (bars, venues, record stores, cafes, galleries).
       const r = await qloo.insights(
-        { "filter.type": "urn:entity:place", "signal.interests.entities": seedIds(ws).join(","), "filter.location.query": loc, take },
+        { "filter.type": "urn:entity:place", "signal.interests.entities": seedIds(ws).join(","), "filter.location.query": loc, take: take * 3 },
         ctx,
       );
-      ws.places = parseEntities(r.data).map(toPlace).sort((a, b) => b.affinity - a.affinity).slice(0, take);
+      const { keep, dropped } = relevantPlaces(parseEntities(r.data));
+      ws.places = keep.sort((a, b) => b.affinity - a.affinity).slice(0, take);
       return {
-        summary: `${ws.places.length} places${matchedLocality(r.data) ? ` in ${matchedLocality(r.data)}` : ""}; top: ${ws.places.slice(0, 3).map((p) => p.name).join(", ")}`,
+        summary: `${ws.places.length} music-relevant places${matchedLocality(r.data) ? ` in ${matchedLocality(r.data)}` : ""}${dropped.length ? ` (dropped ${dropped.length} off-theme: ${dropped.slice(0, 3).join(", ")})` : ""}; top: ${ws.places.slice(0, 3).map((p) => p.name).join(", ")}`,
         forModel: JSON.stringify(ws.places.map((p) => ({ name: p.name, affinity: p.affinity, category: p.category }))),
         ...srcs(r),
       };
@@ -586,15 +649,26 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
             .slice(0, 5)
         : [];
       const t = templatePitch(ws);
-      const pitch: Pitch = {
+      const draft: Pitch = {
         headline: String(args.headline ?? "").slice(0, 200) || t.headline,
         summary: String(args.summary ?? "").slice(0, 1200) || t.summary,
         pickRationales: rationales.length ? rationales : t.pickRationales,
         sponsorAngle: String(args.sponsor_angle ?? "").slice(0, 600) || t.sponsorAngle,
         author: args.__template ? "template" : "llm",
       };
-      ws.pitch = pitch;
-      return { summary: `Pitch drafted: "${pitch.headline}"`, forModel: "Pitch saved. You are done.", sources: [], endpoints: [] };
+      const problems = draft.author === "llm" ? pitchProblems(draft, ws) : [];
+      if (problems.length) {
+        ws.pitch = { ...t, checkNote: `The LLM's pitch was replaced by the template because it made claims the Qloo data does not support: ${problems.join("; ")}.` };
+        return {
+          summary: `LLM pitch failed the data check (${problems.join("; ")}); used the template pitch`,
+          forModel: "Pitch saved (template, because the draft made unsupported claims). You are done.",
+          sources: [],
+          endpoints: [],
+          decisions: [{ title: "Rejected the LLM pitch draft", detail: `Post-check against the Qloo results found: ${problems.join("; ")}. Used the data-only template pitch instead.` }],
+        };
+      }
+      ws.pitch = draft;
+      return { summary: `Pitch drafted: "${draft.headline}"`, forModel: "Pitch saved. You are done.", sources: [], endpoints: [] };
     }
   }
   throw new Error(`Unknown tool: ${name}`);
@@ -623,6 +697,63 @@ function dedupeNames(names: string[]): string[] {
 
 export const HOT_KM = 2;
 
+// Outcome promises the data cannot back (affinity is correlation; we do not forecast sales).
+const OUTCOME_CLAIM =
+  /\bguarantee|\bsell[- ]?outs?\b|\bsold[- ]?out\b|\bsells? out\b|\bpacked\b|\bsure[- ]?fire\b|\bwill (?:sell|fill|pack|draw)\b|\bticket sales\b|\battendance\b|\brevenue\b|\bbox office\b/i;
+// Claims that the crowd is concentrated around the venue.
+const LOCAL_CLAIM =
+  /\b(?:strong|high|deep|dense|concentrated|robust|significant)\s+(?:local|neighbou?rhood|nearby)\b|\blocal\s+(?:audience\s+)?(?:affinity|demand|fan\s?base|following|taste)\s+(?:is\s+)?(?:strong|high|concentrated)|\bconcentrated (?:near|around)\b|\bon (?:your|the venue's) doorstep\b/i;
+const IN_TIER_CLAIM = /\bfits? the room\b|\bin (?:this|the) room's tier\b|\bin[- ]tier\b|\bright[- ]sized\b/i;
+
+/** Claims in an LLM pitch that the workspace data does not support (empty = passes). */
+export function pitchProblems(p: Pitch, ws: Workspace): string[] {
+  const all = [p.headline, p.summary, p.sponsorAngle, ...p.pickRationales.map((r) => r.why)].join(" \n ");
+  const out: string[] = [];
+  const outcome = all.match(OUTCOME_CLAIM);
+  if (outcome) out.push(`promises an outcome ("${outcome[0]}")`);
+  const hs = hotspots(ws);
+  const local = all.match(LOCAL_CLAIM);
+  if (local && !hs?.concentrated)
+    out.push(`claims local concentration ("${local[0]}") but the heatmap lift is ${hs?.lift !== undefined ? `${hs.lift.toFixed(2)}x` : "unknown"} (needs > ${NEAR_LIFT_MIN})`);
+  for (const r of p.pickRationales) {
+    const act = ws.picks.find((x) => norm(x.name) === norm(r.artist));
+    if (act && act.drawFit !== "fits" && IN_TIER_CLAIM.test(r.why)) out.push(`calls ${act.name} a fit for the room, but it is ${FIT_WORDS[act.drawFit ?? "unknown"]}`);
+  }
+  return out;
+}
+
+// Partner spots: keep places a music crowd would go before or after a show. Matched
+// against Qloo place tags (urn:tag:genre:place), e.g. "Live music venue", "Cocktail bar".
+const PLACE_KEEP =
+  /\b(?:bar|pub|lounge|tavern|saloon|brewery|brewpub|taproom|winery|distillery|night ?club|dance club|music|jazz|club|record|vinyl|cafe|caf\u00e9|coffee|tea house|gallery|art|museum|cultural|theater|theatre|cinema|bookstore|book store|venue|concert|karaoke|beer|wine|cocktail)\b/i;
+const PLACE_DROP =
+  /\b(?:therap|psych|counsel|clinic|medical|dental|dentist|doctor|hospital|pharmacy|tattoo|piercing|personal care|salon|barber|spa|nail|hotel|motel|hostel|lodging|bank|insurance|real estate|lawyer|attorney|church|school|gym|fitness|golf|country club|auto|laundr|storage|mental health)/i;
+
+/** True when Qloo's place tags say this is somewhere a music crowd might partner with. */
+export function musicRelevantPlace(tags: string[]): boolean {
+  const named = tags.filter((t) => t && t.toLowerCase() !== "place");
+  if (!named.length) return false;
+  if (named.some((t) => PLACE_DROP.test(t))) return false;
+  return named.some((t) => PLACE_KEEP.test(t));
+}
+
+function placeCategory(tags: string[], fallback?: string): string | undefined {
+  const skip = /^(place|tourist attraction|restaurant|shopping)$/i;
+  return tags.find((t) => PLACE_KEEP.test(t) && !skip.test(t)) ?? fallback;
+}
+
+/** Filters Qloo place results to music-relevant spots; reports what was dropped. */
+function relevantPlaces(ents: ReturnType<typeof parseEntities>): { keep: PlacePick[]; dropped: string[] } {
+  const keep: PlacePick[] = [];
+  const dropped: string[] = [];
+  for (const e of ents) {
+    const tags = e.tags.map((t) => t.name);
+    if (musicRelevantPlace(tags)) keep.push({ ...toPlace(e), category: placeCategory(tags, toPlace(e).category) });
+    else dropped.push(e.name);
+  }
+  return { keep, dropped };
+}
+
 /** Custom venues are placed at the city centre (no street address), so say so. */
 const anchor = (ws: Workspace) => (ws.venue.custom ? "the city centre" : "the venue");
 
@@ -633,12 +764,16 @@ const anchor = (ws: Workspace) => (ws.venue.custom ? "the city centre" : "the ve
  * Instead compare the hottest fifth of cells with all cells: if hot cells sit near
  * the venue more often than cells in general, the crowd is concentrated nearby.
  */
-export function hotspots(ws: Workspace, km = HOT_KM): { hotPct: number; allPct: number } | undefined {
+export function hotspots(ws: Workspace, km = HOT_KM): { hotPct: number; allPct: number; lift?: number; concentrated: boolean } | undefined {
   if (ws.venue.needsGeocode || ws.heatmap.length < 5) return undefined;
   const near = (p: { lat: number; lng: number }) => haversineKm(ws.venue.lat, ws.venue.lng, p.lat, p.lng) <= km;
   const hot = [...ws.heatmap].sort((a, b) => b.affinity - a.affinity).slice(0, Math.ceil(ws.heatmap.length / 5));
   const pctOf = (l: { lat: number; lng: number }[]) => Math.round((l.filter(near).length / l.length) * 100);
-  return { hotPct: pctOf(hot), allPct: pctOf(ws.heatmap) };
+  const hotPct = pctOf(hot);
+  const allPct = pctOf(ws.heatmap);
+  // Same ratio and threshold as the UI (lib/ui.ts concentration).
+  const lift = allPct > 0 ? Math.round((hotPct / allPct) * 100) / 100 : undefined;
+  return { hotPct, allPct, lift, concentrated: lift !== undefined && lift > NEAR_LIFT_MIN };
 }
 
 export function topBucket(age: Record<string, number>): string {
@@ -648,7 +783,8 @@ export function topBucket(age: Record<string, number>): string {
   return e ? `${e[0].replace(/_/g, " ")} (${e[1] >= 0 ? "+" : ""}${e[1].toFixed(2)} vs. avg)` : "n/a";
 }
 
-const FIT_WORDS = { fits: "fits the room", stretch: "a stretch for the room", under: "may under-draw", unknown: "draw fit unknown" } as const;
+// Same wording as the UI verdict chips (lib/ui.ts VERDICT).
+const FIT_WORDS = { fits: "in this room's tier", stretch: "stretch pick", under: "below this room's tier", unknown: "tier unknown" } as const;
 
 /** Deterministic pitch built only from Workspace facts (used by the scripted planner and as a fallback). */
 export function templatePitch(ws: Workspace): Pitch {
@@ -659,11 +795,15 @@ export function templatePitch(ws: Workspace): Pitch {
   const demo = ws.demographics.find((d) => d.entityId === a?.entityId) ?? ws.demographics[0];
   const cityShort = ws.venue.city.split(",")[0];
   return {
-    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest bookable taste fit for your next ${cityShort} headline night`,
+    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest ${a?.drawFit === "fits" ? "in-tier " : ""}taste match for your next ${cityShort} headline night`,
     summary:
       `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}` +
-      (ws.band ? `, all checked against a popularity band of ${bandLabel(ws.band.target)} for a ${ws.venue.capacity}-capacity room. ` : ". ") +
-      (hs ? `${hs.hotPct}% of the hottest fifth of Qloo's ${cityShort} map cells sit within ${HOT_KM} km of ${anchor(ws)} (vs ${hs.allPct}% of all cells). ` : "") +
+      (ws.band ? `, each checked against the ${bandLabel(ws.band.target)} popularity tier for a ${ws.venue.capacity}-capacity room (a heuristic for draw, not a ticket forecast). ` : ". ") +
+      (hs
+        ? hs.concentrated
+          ? `Taste for ${ws.heatmapSubject.join(", ")} is concentrated near ${anchor(ws)}: ${hs.hotPct}% of the hottest fifth of Qloo's ${cityShort} map cells sit within ${HOT_KM} km, vs ${hs.allPct}% of all cells (${hs.lift!.toFixed(1)}x). `
+          : `Qloo's ${cityShort} map shows taste for ${ws.heatmapSubject.join(", ")} spread across the city rather than concentrated near ${anchor(ws)}. `
+        : "") +
       (ws.explain ? `Qloo explainability: across the ${ws.explain.subset} picks, the pull comes from ${driverText(ws.explain.drivers)}. ` : "") +
       (demo
         ? `${demo.name}'s crowd skews ${topBucket(demo.age)}.`

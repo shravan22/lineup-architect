@@ -20,7 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Lineup Architect: taste-driven booking agent",
-  description: "An AI booking agent for independent venues, powered by Qloo taste data: ranked acts, local affinity map, audience profile, sponsor shortlist and a pitch one-pager.",
+  description:
+    "A venue-first booking agent for independent venues, built on Qloo cross-domain taste data: acts ranked for your room, where the taste sits in your city, the audience profile, sponsor brands, partner spots and a pitch one-pager.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

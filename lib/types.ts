@@ -158,6 +158,8 @@ export interface Pitch {
   pickRationales: { artist: string; why: string }[];
   sponsorAngle: string;
   author: "llm" | "template";
+  /** Set when an LLM draft failed the data post-check and the template replaced it. */
+  checkNote?: string;
 }
 
 export interface Workspace {

@@ -1,10 +1,10 @@
 import "server-only";
-import { bandLabel, capacityBand, narrowTop, widen } from "@/lib/band";
+import { bandLabel, capAtCeiling, capacityBand, searchBand, widen } from "@/lib/band";
 import { qlooMode } from "@/lib/qloo/client";
 import { hasFixtures, recordedOn } from "@/lib/qloo/fixtures";
 import type { AgentEvent, LlmInfo, VenueInput, Workspace } from "@/lib/types";
 import { isQuotaError, llmErrorText, selectProvider, type Msg } from "./llm";
-import { chooseCandidate, DEFAULT_TAKE, MIN_FIT, runTool, templatePitch, TOOL_LABELS, TOOL_SPECS } from "./tools";
+import { bookableCount, chooseCandidate, DEFAULT_TAKE, MIN_FIT, runTool, templatePitch, TOOL_LABELS, TOOL_SPECS } from "./tools";
 
 type Emit = (e: AgentEvent) => void;
 type By = "llm" | "scripted";
@@ -153,54 +153,59 @@ async function runScripted(c: Ctx) {
 
   if (!ws.picks.length) {
     const target = capacityBand(ws.venue.capacity);
-    thought(c, `A ${ws.venue.capacity}-cap room maps to Qloo popularity ${bandLabel(target)}. Rank acts inside that band, with ${ws.venue.city} as the location signal.`);
+    const search = searchBand(ws.venue.capacity);
+    thought(
+      c,
+      `A ${ws.venue.capacity}-cap room maps to Qloo popularity ${bandLabel(target)} (a heuristic for draw). Rank acts in ${bandLabel(search)}, a little above the room's ceiling so stretch picks are visible, with ${ws.venue.city} as the location signal.`,
+    );
     await step("recommend_artists", { take: DEFAULT_TAKE }, by, c);
+    let moved = false;
 
-    // Too few fit: widen, at most twice.
-    for (let i = 0; i < 2 && ws.band && countInBand(ws) < MIN_FIT; i++) {
-      const next = widen(ws.band.used);
-      thought(c, `Only ${countInBand(ws)} acts fit; I need at least ${MIN_FIT}. Widen the band and re-query.`);
+    // Stretch acts crowd the shortlist: cap the query at the room's ceiling.
+    if (ws.band && countTier(ws, "fits") < MIN_FIT && countTier(ws, "stretch") > 0 && ws.band.used.max > ws.band.target.max) {
+      const next = capAtCeiling(ws.band.used, ws.band.target);
+      thought(c, `Only ${countTier(ws, "fits")} of ${ws.picks.length} acts are in this room's tier; ${countTier(ws, "stretch")} are stretch picks. Cap the search at the room's ceiling and re-query.`);
       await step(
         "recommend_artists",
         {
           popularity_min: next.min,
           popularity_max: next.max,
           take: DEFAULT_TAKE,
-          reason: `Only ${countInBand(ws)} acts inside ${bandLabel(ws.band.used)} (need ${MIN_FIT}). Widened to ${bandLabel(next)}; acts outside the room's band are flagged as stretch or under-draw.`,
+          reason: `Only ${countTier(ws, "fits")} acts were in the room's tier ${bandLabel(ws.band.target)} and ${countTier(ws, "stretch")} were stretch picks. Capped the search at ${bandLabel(next)} to surface acts a ${ws.venue.capacity}-cap room can book; the two strongest stretch picks stay on the list as reach options.`,
         },
         by,
         c,
       );
+      moved = true;
     }
 
-    // Crowded band for a small room: try trimming the top, keep it only if enough acts remain.
-    if (ws.band && ws.venue.capacity <= 400 && ws.picks.length >= DEFAULT_TAKE && sameBand(ws.band.used, ws.band.target)) {
-      const before = { picks: ws.picks, band: ws.band };
-      const next = narrowTop(ws.band.used);
-      thought(c, `${ws.picks.length} acts fit a ${ws.venue.capacity}-cap room. Lower the top of the band so the shortlist stays affordable.`);
+    // Too few acts at or below the ceiling: widen downwards, at most twice, and stop if a re-query changes nothing.
+    for (let i = 0; i < 2 && ws.band && countBookable(ws) < MIN_FIT; i++) {
+      const next = widen(ws.band.used);
+      const n = ws.band.history.length;
+      thought(c, `Only ${countBookable(ws)} acts are at or below the room's ceiling; I need at least ${MIN_FIT}. Widen the band downwards and re-query.`);
       await step(
         "recommend_artists",
         {
           popularity_min: next.min,
           popularity_max: next.max,
           take: DEFAULT_TAKE,
-          reason: `The ${bandLabel(ws.band.used)} band returned a full list for a ${ws.venue.capacity}-cap room. Narrowed the top to ${bandLabel(next)} to favour acts the room can afford.`,
+          reason: `Only ${countBookable(ws)} acts inside ${bandLabel(ws.band.used)} at or below the room's ceiling (need ${MIN_FIT}). Widened to ${bandLabel(next)}; acts below the room's tier are flagged as under-draw.`,
         },
         by,
         c,
       );
-      if (countInBand(ws) < MIN_FIT) {
-        ws.picks = before.picks;
-        ws.band = { ...before.band, history: [...ws.band.history, "reverted"] };
-        c.emit({ type: "decision", by, title: "Kept the original band", detail: `Narrowing left fewer than ${MIN_FIT} acts, so the ${bandLabel(before.band.used)} results stand.` });
-        c.emit({ type: "workspace", workspace: ws });
-      }
-    } else if (ws.band && sameBand(ws.band.used, ws.band.target) && countInBand(ws) >= MIN_FIT) {
+      moved = true;
+      if (ws.band.history.length > n && ws.band.history[ws.band.history.length - 1].includes("reverted")) break;
+    }
+
+    if (ws.band && !moved) {
+      const st = countTier(ws, "stretch");
       c.emit({
         type: "decision",
         by,
-        title: `Kept the ${bandLabel(ws.band.target)} band`,
-        detail: `${countInBand(ws)} acts fit a ${ws.venue.capacity}-cap room (need at least ${MIN_FIT}) and the list is not crowded, so no re-query is needed.`,
+        title: `Kept the ${bandLabel(ws.band.used)} search`,
+        detail: `${countTier(ws, "fits")} of ${ws.picks.length} acts are in a ${ws.venue.capacity}-cap room's tier (need at least ${MIN_FIT})${st ? `; ${st} stretch pick${st === 1 ? "" : "s"} stay on the list, ranked last, as reach options` : ""}. No re-query needed.`,
       });
     }
   }
@@ -232,12 +237,12 @@ async function writeTemplatePitch(c: Ctx) {
   }
 }
 
-const sameBand = (a: { min: number; max: number }, b: { min: number; max: number }) => a.min === b.min && a.max === b.max;
+function countTier(ws: Workspace, fit: "fits" | "stretch"): number {
+  return ws.picks.filter((p) => p.drawFit === fit).length;
+}
 
-function countInBand(ws: Workspace): number {
-  const b = ws.band?.used;
-  if (!b) return 0;
-  return ws.picks.filter((p) => p.popularity !== undefined && p.popularity >= b.min && p.popularity <= b.max).length;
+function countBookable(ws: Workspace): number {
+  return ws.band ? bookableCount(ws.picks, ws.band.used, ws.band.target) : 0;
 }
 
 function systemPrompt(v: VenueInput) {
@@ -248,11 +253,11 @@ function systemPrompt(v: VenueInput) {
     "You decide the plan. Rules:",
     "- Call independent tools in the same turn (they run in parallel). You have at most 8 turns, so batch: e.g. all search_artist calls plus find_genre_tags together; later heatmap, demographics, brands and places together.",
     "- If search_artist reports several candidates, call resolve_headliner and pick the one that matches the venue's genre. Give a one-sentence reason.",
-    `- The room's capacity maps to Qloo popularity ${bandLabel(band)} (0..1 percentile). recommend_artists uses it by default. If fewer than ${MIN_FIT} acts fit, widen the band and re-query. If the band is crowded and the room is small, you may lower popularity_max. Always give a reason when you change the band.`,
+    `- The room's capacity maps to Qloo popularity ${bandLabel(band)} (0..1 percentile; a heuristic for draw, not a ticket forecast). By default recommend_artists searches ${bandLabel(searchBand(v.capacity))}, a little above the ceiling, so acts above it come back flagged as stretch. Follow the tool's advice: if fewer than ${MIN_FIT} acts are in tier because stretch acts take the slots, cap popularity_max at ${band.max}; if fewer than ${MIN_FIT} acts are at or below the ceiling, lower popularity_min. Always give a reason when you change the band. A re-query that adds fewer than 2 new acts is reverted automatically.`,
     "- Pick which acts to map and profile (default: the top 3 that fit the room).",
     "- recommend_artists returns Qloo explainability (driven_by: which past headliner drove each act, 0..1). Cite it in pick_rationales when present.",
     "- If a tool reports unavailable (HTTP 403, not enabled for this key), do not retry it; continue and finish the pitch without that section.",
-    "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals. Never promise outcomes such as attendance, sell-outs or revenue (no 'guarantees', 'packed', 'sure-fire'); say what the Qloo data shows. Only call local affinity strong if the heatmap result shows hot cells concentrated near the venue.",
+    "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals. Never promise outcomes such as attendance, sell-outs or revenue (no 'guarantees', 'packed', 'sure-fire'); say what the Qloo data shows. Only describe local taste as concentrated near the venue if audience_heatmap reports near_venue_lift above 1.1; otherwise say taste is spread across the city or leave it out. Never write 'strong local affinity' unless that lift is above 1.1. Call stretch acts 'stretch picks', never 'fits the room'. The pitch is checked against the data; unsupported claims are replaced by the template pitch.",
     `Venue: ${v.name}, ${v.city}, capacity ${v.capacity}. ${v.blurb}`,
     `Past headliners: ${v.headliners.join(", ")}.${v.genreHint ? ` Genre focus: ${v.genreHint}.` : ""}`,
   ].join("\n");
@@ -266,7 +271,7 @@ export function livePlan(v: VenueInput): string[] {
     `Resolve ${v.headliners.map((h) => `"${h}"`).join(", ")} with Qloo /search, and disambiguate any duplicates`,
     ...(v.genreHint ? [`Look up genre tags for "${v.genreHint}" with Qloo /v2/tags`] : []),
     "Build the taste profile of those headliners (Qloo /v2/insights, urn:tag)",
-    `Rank acts (with ${v.city} as location signal) inside popularity band ${bandLabel(band)} for a ${v.capacity}-cap room, widening or narrowing if needed`,
+    `Rank acts (with ${v.city} as location signal) for a ${v.capacity}-cap room whose tier is popularity ${bandLabel(band)}, capping the search at that ceiling or widening it if too few acts are in tier`,
     "Map local affinity, profile the audience, shortlist sponsor brands and partner spots (4 Qloo insights calls in parallel)",
     "Draft the booking pitch",
   ];

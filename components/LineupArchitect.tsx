@@ -255,7 +255,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       </header>
 
       <section className="hero" aria-labelledby="hero-h">
-        <p className="kicker">AI booking agent for independent venues</p>
+        <p className="kicker">Venue-first booking agent on Qloo taste data</p>
         <h1 id="hero-h">
           Book the acts <span className="hl">your neighbourhood</span> already loves.
         </h1>
@@ -396,7 +396,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 {form.capacity >= 50
                   ? `A ${form.capacity}-cap room is a ${formTier.name.toLowerCase()} (${formTier.range}): the agent looks for acts with Qloo popularity ${bandLabel(formBand)}. `
                   : ""}
-                It widens or narrows that range if too few or too many acts fit.
+                It caps the search at that ceiling if stretch acts crowd the list, or widens it if too few acts fit.
               </p>
               {formError && (
                 <p className="error" role="alert">
@@ -592,14 +592,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                     {tier.name} · {tier.range}
                   </span>
                   <span>
-                    {ws.venue.name} holds {ws.venue.capacity}, so the agent looked for acts with Qloo popularity <strong>{bandLabel(ws.band.target)}</strong>
-                    {(ws.band.used.min !== ws.band.target.min || ws.band.used.max !== ws.band.target.max) && (
-                      <>
-                        {" "}
-                        and then searched <strong>{bandLabel(ws.band.used)}</strong>
-                      </>
-                    )}
-                    .
+                    {ws.venue.name} holds {ws.venue.capacity}, so acts with Qloo popularity <strong>{bandLabel(ws.band.target)}</strong> count as in this
+                    room&apos;s tier (a heuristic). The agent&apos;s last search covered <strong>{bandLabel(ws.band.used)}</strong>
+                    {ws.band.used.max > ws.band.target.max ? ", a little above the ceiling, so stretch picks show up" : ""}.
                   </span>
                 </p>
               )}
@@ -859,6 +854,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   {ws.pitch.author === "llm" ? `written by ${meta.llm.label} from the Qloo results` : "deterministic template"}. Affinity scores describe
                   correlations in taste, not predictions about individuals or ticket sales.
                 </p>
+                {ws.pitch.checkNote && <p className="provenance">{ws.pitch.checkNote}</p>}
               </div>
             </article>
           )}

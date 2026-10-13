@@ -33,6 +33,9 @@ export const VERDICT: Record<DrawFit, string> = {
 
 const HOT_KM = 2;
 
+/** Hot-cell share near the venue must beat the city-wide share by this factor to count as concentrated (also used by the pitch check). */
+export const NEAR_LIFT_MIN = 1.1;
+
 function km(aLat: number, aLng: number, bLat: number, bLng: number) {
   const R = 6371;
   const dLat = ((bLat - aLat) * Math.PI) / 180;
@@ -57,7 +60,7 @@ export function concentration(venue: VenueInput, points: HeatPoint[]) {
   const verdict =
     ratio === undefined
       ? "Few map areas sit near the venue, so no comparison"
-      : ratio >= 1.3
+      : ratio > NEAR_LIFT_MIN
         ? `Concentrated near the venue: ${ratio.toFixed(1)}x the city-wide share`
         : ratio <= 0.77
           ? "Concentrated away from the venue"

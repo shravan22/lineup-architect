@@ -1,7 +1,7 @@
 import "server-only";
 import type { DataSource, QlooMode } from "@/lib/types";
 import { cacheGet, cacheKey, cacheSet } from "./cache";
-import { fixtureFor } from "./fixtures";
+import { fixtureFor, recordedSubject } from "./fixtures";
 import { trimResponse } from "./trim";
 
 // Server-only Qloo client for the hackathon API.
@@ -49,6 +49,8 @@ export interface QlooResult<T = unknown> {
   data: T;
   source: DataSource;
   endpoint: string;
+  /** Recorded mode only: the acts the replayed call was recorded for, when they differ from the request. */
+  standIn?: { ids: string[]; names: string[] };
 }
 
 type Params = Record<string, string | number | undefined>;
@@ -131,7 +133,7 @@ export async function qlooGet<T = unknown>(pathname: string, rawParams: Params, 
         "No sample data for this request. Sample mode only covers the five preset venues; add a Qloo API key for live data.",
       );
     }
-    return { data: data as T, source: "fixture", endpoint };
+    return { data: data as T, source: "fixture", endpoint, standIn: recordedSubject(ctx.fixtureSet, pathname, params) };
   }
 
   const cached = await cacheGet(key);

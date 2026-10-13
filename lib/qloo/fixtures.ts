@@ -94,6 +94,32 @@ function nearest(f: RecordedSet, pathname: string, params: Record<string, string
   return { ...kind[0].data, results: { entities: ents } };
 }
 
+/**
+ * When a heatmap, demographics or brand request was not recorded exactly (the agent
+ * chose different acts than at recording time), the router answers with the recorded
+ * call of the same kind. This returns the acts that recorded call was about, so the
+ * UI can name them truthfully. Undefined when the exact request was recorded.
+ */
+export function recordedSubject(set: string | undefined, pathname: string, params: Record<string, string>): { ids: string[]; names: string[] } | undefined {
+  const f = set ? SETS[set] : undefined;
+  if (!f || pathname !== "/v2/insights" || f.calls[cacheKey(pathname, params)]) return undefined;
+  const type = params["filter.type"];
+  if (!type || type === "urn:entity:artist" || !params["signal.interests.entities"]) return undefined;
+  const hit = Object.keys(f.calls)
+    .map(parseKey)
+    .find((c) => c.path === pathname && c.params["filter.type"] === type);
+  if (!hit) return undefined;
+  const ids = list(decodeURIComponent(hit.params["signal.interests.entities"] ?? ""));
+  const want = list(params["signal.interests.entities"]);
+  if (ids.length === want.length && ids.every((x) => want.includes(x))) return undefined;
+  const names = new Map<string, string>();
+  for (const data of Object.values(f.calls)) {
+    const ents = Array.isArray(data?.results) ? data.results : (data?.results?.entities ?? []);
+    for (const e of ents) if (e?.entity_id && e?.name) names.set(e.entity_id, e.name);
+  }
+  return { ids, names: ids.map((x) => names.get(x) ?? x) };
+}
+
 export function fixtureFor(
   set: string | undefined,
   pathname: string,
