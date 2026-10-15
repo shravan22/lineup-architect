@@ -69,8 +69,12 @@ export function concentration(venue: VenueInput, points: HeatPoint[]) {
 }
 
 /** Plain-language planner label. The raw label (with model or fallback reason) stays in the tooltip. */
-export function plannerLabel(llm: { provider: string; label: string }): { text: string; title: string } {
-  if (llm.provider !== "scripted") return { text: `Planner: ${llm.label}`, title: "An LLM decides which Qloo tool to call next and writes the pitch" };
+export function plannerLabel(llm: { provider: string; label: string; note?: string }): { text: string; title: string } {
+  if (llm.provider !== "scripted")
+    return {
+      text: `Planner: ${llm.label}${llm.note ? " (fallback)" : ""}`,
+      title: `An LLM decides which Qloo tool to call next and writes the pitch${llm.note ? `. ${llm.note[0].toUpperCase()}${llm.note.slice(1)}.` : ""}`,
+    };
   // Handover labels look like "Scripted planner (<model> failed|quota reached|too slow|stopped early)" (lib/agent/run.ts).
   const why = llm.label.match(/(failed|quota reached|too slow|stopped early)\)$/)?.[1];
   return {

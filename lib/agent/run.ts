@@ -3,7 +3,7 @@ import { bandLabel, capAtCeiling, capacityBand, searchBand, widen } from "@/lib/
 import { qlooMode } from "@/lib/qloo/client";
 import { hasFixtures, recordedOn } from "@/lib/qloo/fixtures";
 import type { AgentEvent, LlmInfo, VenueInput, Workspace } from "@/lib/types";
-import { isQuotaError, llmErrorText, selectProvider, type Msg } from "./llm";
+import { isQuotaError, isTransientError, llmErrorText, LlmTimeout, selectProvider, selectProviders, type LlmProvider, type Msg } from "./llm";
 import { bookableCount, chooseCandidate, DEFAULT_TAKE, MIN_FIT, runTool, templatePitch, TOOL_LABELS, TOOL_SPECS } from "./tools";
 
 type Emit = (e: AgentEvent) => void;
@@ -12,7 +12,7 @@ type By = "llm" | "scripted";
 // Vercel's function limit is 60 s (route.ts maxDuration). The agent stops
 // starting new work once its budget is spent and streams what it has.
 const MAX_TURNS = 8;
-const BUDGET_MS = Number(process.env.AGENT_BUDGET_MS ?? 50_000);
+const BUDGET_MS = Number(process.env.AGENT_BUDGET_MS) || 50_000;
 /** Time kept back at the end for the template pitch and closing the stream. */
 const RESERVE_MS = 1_500;
 // In recorded mode responses are instant; a short pause per step keeps the
@@ -48,16 +48,13 @@ class OutOfTime extends Error {
   }
 }
 
-/** The LLM used up its share of the budget; the scripted planner takes over. */
-class LlmTooSlow extends Error {
-  constructor() {
-    super("LLM too slow");
-  }
-}
-
 // Time kept back for the scripted planner to finish a live run (~5 s measured) after
 // handing over from a slow or failing LLM. Gemini 3.8 Flash took 9-29 s per call live.
 const HANDOVER_MS = 14_000;
+// Per model call. A healthy Flash-Lite / Haiku planning turn takes 1-3 s; on 2026-10-13
+// a degraded Gemini first call hung for 35 s. Aborting at 8 s lets the next provider
+// (or the scripted planner) take over quickly.
+const LLM_CALL_TIMEOUT_MS = Number(process.env.LLM_CALL_TIMEOUT_MS) || 8_000; // empty or invalid: default
 
 function withTimeout<T>(p: Promise<T>, ms: number, err: () => Error = () => new OutOfTime()): Promise<T> {
   if (ms <= 0) return Promise.reject(err());
@@ -68,6 +65,43 @@ function withTimeout<T>(p: Promise<T>, ms: number, err: () => Error = () => new 
       (e) => (clearTimeout(t), reject(e)),
     );
   });
+}
+
+/** One model call, aborted after `ms` (LlmTimeout). */
+async function callWithTimeout(p: LlmProvider, system: string, messages: Msg[], ms: number) {
+  const ac = new AbortController();
+  const err = new LlmTimeout(ms);
+  const t = setTimeout(() => ac.abort(err), ms);
+  try {
+    // Race as well as abort, in case an SDK ignores the signal.
+    return await Promise.race([
+      p.next(system, messages, TOOL_SPECS, ac.signal),
+      new Promise<never>((_, reject) => ac.signal.addEventListener("abort", () => reject(err), { once: true })),
+    ]);
+  } catch (e) {
+    throw ac.signal.aborted ? err : e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/**
+ * Provider-neutral restart prompt for the next provider in the chain: the earlier
+ * provider's turns are replayed as text (its raw content, e.g. Gemini thought
+ * signatures, cannot be sent to another provider). The workspace already holds the results.
+ */
+function resumePrompt(task: string, messages: Msg[]): string {
+  const lines: string[] = [];
+  for (const m of messages) {
+    if (m.role === "assistant") {
+      if (m.text) lines.push(`Planner: ${m.text}`);
+      for (const tc of m.toolCalls) lines.push(`Called ${tc.name}(${JSON.stringify(tc.args)})`);
+    } else if (m.role === "tool") {
+      for (const r of m.results) lines.push(`Result of ${r.name}${r.isError ? " (error)" : ""}: ${r.content.slice(0, 1500)}`);
+    }
+  }
+  if (!lines.length) return task;
+  return [task, "Another planner already ran these steps; their results are saved. Continue from here and do not repeat them.", ...lines].join("\n");
 }
 
 function emptyWorkspace(venue: VenueInput): Workspace {
@@ -289,11 +323,11 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
   const dl = new Deadline(BUDGET_MS);
   const ws = emptyWorkspace(venue);
   const c: Ctx = { ws, emit, dl };
-  const provider = selectProvider();
+  const chain = selectProviders();
   const llmMs: number[] = []; // per model call latency, reported in the done event
   const llmStart = Date.now();
   let llmTries = 0; // includes a call abandoned at the handover deadline
-  emit({ type: "meta", qlooMode: qlooMode(), llm: provider?.info ?? SCRIPTED_INFO, recordedOn: recordedOn() });
+  emit({ type: "meta", qlooMode: qlooMode(), llm: chain[0]?.info ?? SCRIPTED_INFO, recordedOn: recordedOn() });
 
   if (qlooMode() === "fixture" && !hasFixtures(venue.fixtureSet)) {
     emit({
@@ -309,37 +343,80 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
   try {
     if (venue.needsGeocode) await step("locate_city", {}, "scripted", c);
 
-    if (!provider) {
+    if (!chain.length) {
       await runScripted(c);
     } else {
-      const messages: Msg[] = [{ role: "user", text: `Plan the next booking for ${venue.name} and produce the pitch.` }];
-      try {
-        for (let turn = 0; turn < MAX_TURNS && !ws.pitch; turn++) {
-          if (dl.expired()) throw new OutOfTime();
-          const llmLeft = dl.left() - HANDOVER_MS;
-          if (llmLeft < 3_000) throw new LlmTooSlow();
-          const tCall = Date.now();
-          llmTries++;
-          const out = await withTimeout(provider.next(systemPrompt(venue), messages, TOOL_SPECS), llmLeft, () => new LlmTooSlow());
+      const task = `Plan the next booking for ${venue.name} and produce the pitch.`;
+      let messages: Msg[] = [{ role: "user", text: task }];
+      let pi = 0; // index of the provider planning now
+      let turn = 0;
+      let retried = false; // one retry per provider
+      const tried: string[] = []; // failure notes of earlier providers, for the final notice
+      // Hands over to the next provider in the chain (true) or reports there is none (false).
+      const nextProvider = (why: string): boolean => {
+        const from = chain[pi].info.label;
+        tried.push(`${from} ${why}`);
+        if (pi + 1 >= chain.length) return false;
+        pi++;
+        retried = false;
+        const to = chain[pi];
+        emit({ type: "meta", qlooMode: qlooMode(), llm: { ...to.info, note: `fallback after ${from} ${why}` }, recordedOn: recordedOn() });
+        emit({ type: "thought", by: "system", text: `Switching planner: ${from} ${why}; ${to.info.label} continues from the work done so far.` });
+        emit({ type: "notice", text: `${from} ${why}; switched to ${to.info.label} for the remaining turns.` });
+        messages = [{ role: "user", text: resumePrompt(task, messages) }];
+        return true;
+      };
+      let failure: { why: string; kind: "slow" | "quota" | "failed" } | null = null;
+      while (turn < MAX_TURNS && !ws.pitch) {
+        if (dl.expired()) throw new OutOfTime();
+        const llmLeft = dl.left() - HANDOVER_MS;
+        if (llmLeft < 3_000) {
+          failure = { why: "too slow", kind: "slow" };
+          tried.push(`${chain[pi].info.label} out of planning time`);
+          break;
+        }
+        const provider = chain[pi];
+        const callMs = Math.min(LLM_CALL_TIMEOUT_MS, llmLeft);
+        const tCall = Date.now();
+        llmTries++;
+        let out;
+        try {
+          out = await callWithTimeout(provider, systemPrompt(venue), messages, callMs);
           llmMs.push(Date.now() - tCall);
-          if (out.text) emit({ type: "thought", by: "llm", text: out.text });
-          messages.push({ role: "assistant", text: out.text, toolCalls: out.toolCalls, raw: out.raw });
-          if (!out.toolCalls.length) break;
-          // Tool calls in one turn are independent by contract: run them concurrently.
-          const res = await Promise.all(out.toolCalls.map((call) => step(call.name, call.args, "llm", c)));
-          messages.push({ role: "tool", results: out.toolCalls.map((call, i) => ({ id: call.id, name: call.name, content: res[i].content, isError: !res[i].ok })) });
+        } catch (e) {
+          llmMs.push(Date.now() - tCall);
+          if (e instanceof OutOfTime) throw e;
+          const timedOut = e instanceof LlmTimeout;
+          const quota = !timedOut && isQuotaError(e);
+          const why = timedOut ? `timed out (no reply in ${(callMs / 1000).toFixed(0)} s)` : quota ? `quota reached (${llmErrorText(e)})` : `failed (${llmErrorText(e)})`;
+          // 5xx / connection errors are usually transient: one retry per provider, if time allows.
+          if (!retried && isTransientError(e) && dl.left() - HANDOVER_MS > 6_000) {
+            retried = true;
+            emit({ type: "thought", by: "system", text: `${provider.info.label} ${why}; retrying once.` });
+            await sleep(1_000);
+            continue;
+          }
+          if (nextProvider(why)) continue;
+          failure = { why, kind: timedOut ? "slow" : quota ? "quota" : "failed" };
+          break;
         }
-        if (!ws.pitch) await handover(c, provider.info.label, "stopped early", `The model stopped before finishing (turn cap ${MAX_TURNS}); the scripted planner finished the run.`);
-      } catch (e) {
-        if (e instanceof OutOfTime) throw e;
-        const label = provider.info.label;
-        if (e instanceof LlmTooSlow) {
-          await handover(c, label, "too slow", `LLM too slow (${label} used ${((Date.now() - llmStart) / 1000).toFixed(0)} s over ${llmTries} call${llmTries === 1 ? "" : "s"}, the last one timed out); scripted planner finished the run.`);
-        } else if (isQuotaError(e)) {
-          await handover(c, label, "quota reached", `LLM quota reached (${label}: ${llmErrorText(e)}), scripted planner finished the run.`);
-        } else {
-          await handover(c, label, "failed", `LLM unavailable (${label}: ${llmErrorText(e)}); scripted planner finished the run.`);
-        }
+        turn++;
+        if (out.text) emit({ type: "thought", by: "llm", text: out.text });
+        messages.push({ role: "assistant", text: out.text, toolCalls: out.toolCalls, raw: out.raw });
+        if (!out.toolCalls.length) break;
+        // Tool calls in one turn are independent by contract: run them concurrently.
+        const res = await Promise.all(out.toolCalls.map((call) => step(call.name, call.args, "llm", c)));
+        messages.push({ role: "tool", results: out.toolCalls.map((call, i) => ({ id: call.id, name: call.name, content: res[i].content, isError: !res[i].ok })) });
+      }
+      if (!ws.pitch) {
+        const label = chain[pi].info.label;
+        const spent = `${((Date.now() - llmStart) / 1000).toFixed(0)} s over ${llmTries} call${llmTries === 1 ? "" : "s"}`;
+        // Every provider's failure, in order (the last one is the reason for this handover).
+        const what = tried.join("; then ");
+        if (!failure) await handover(c, label, "stopped early", `The model stopped before finishing (turn cap ${MAX_TURNS}); the scripted planner finished the run.`);
+        else if (failure.kind === "slow") await handover(c, label, "too slow", `LLM too slow: ${what} (${spent}). The scripted planner finished the run.`);
+        else if (failure.kind === "quota") await handover(c, label, "quota reached", `LLM quota reached: ${what}. The scripted planner finished the run.`);
+        else await handover(c, label, "failed", `LLM unavailable: ${what}. The scripted planner finished the run.`);
       }
       if (!ws.pitch) await runScripted(c);
     }
@@ -353,5 +430,5 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
     await writeTemplatePitch({ ...c, dl: new Deadline(RESERVE_MS + 2_000) });
     emit({ type: "workspace", workspace: ws });
   }
-  emit({ type: "done", partial: ws.partial, elapsedMs: dl.elapsed(), llmCalls: provider ? { n: llmTries, ms: llmMs } : undefined });
+  emit({ type: "done", partial: ws.partial, elapsedMs: dl.elapsed(), llmCalls: chain.length ? { n: llmTries, ms: llmMs } : undefined });
 }

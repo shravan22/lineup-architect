@@ -63,18 +63,26 @@ Qloo data:
 | `QLOO_API_KEY` set (and `QLOO_MODE` not `fixture`) | Live Qloo API. The badge says "Live Qloo API". Repeat calls within 24 h come from the server cache and are marked `cache` in the trace. |
 | no `QLOO_API_KEY`, or `QLOO_MODE=fixture` | Recorded mode. The badge says "Recorded from the Qloo API on <date>". These are real responses recorded from the hackathon API, trimmed to the fields the app reads and replayed per request. Only the five preset venues are covered. A custom venue shows a "needs a live Qloo key" state with the plan it would run, instead of invented results. |
 
-Planner (`lib/agent/llm.ts` `selectProvider`):
+Planner (`lib/agent/llm.ts` `selectProviders`, a fallback chain):
 
-| Condition | Planner |
+| Keys set | Chain |
 |---|---|
-| `LLM_PROVIDER=gemini` / `claude` / `scripted` | That provider. Gemini and Claude also need their key; without it the scripted planner runs. |
-| `LLM_PROVIDER` unset, `ANTHROPIC_API_KEY` set | Claude (`claude-haiku-4-5-20251001`) via Anthropic tool use |
-| `LLM_PROVIDER` unset, no Anthropic key, `GEMINI_API_KEY` set | Gemini (`gemini-3.5-flash-lite`) via `@google/genai` function calling |
-| no LLM key | Rule-based scripted planner: the same tools and branch logic (disambiguate, cap or widen the band), deterministic, labelled "rule-based" |
+| `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` | Claude (`claude-haiku-4-5-20251001`, Anthropic tool use), then Gemini (`gemini-3.5-flash-lite`, `@google/genai` function calling), then the scripted planner |
+| one of them | That provider, then the scripted planner |
+| neither, or `LLM_PROVIDER=scripted` | Rule-based scripted planner: the same tools and branch logic (disambiguate, cap or widen the band), deterministic, labelled "rule-based" |
 
-If the LLM fails, hits a quota (HTTP 429) or is too slow for the time budget, the scripted
-planner finishes the same run. The badge switches to "rule-based fallback" and a notice gives
-the reason.
+`LLM_PROVIDER=gemini` or `claude` forces the primary; the other provider stays as the fallback
+if its key is set.
+
+Each model call is aborted after `LLM_CALL_TIMEOUT_MS` (default 8 s; healthy planning turns take
+1-3 s). On a timeout, HTTP 5xx, 429/quota or other error the run switches to the next provider
+for the remaining turns: the trace says why, the planner badge names the provider that is
+actually planning ("fallback"), and the new provider continues from the steps already done.
+HTTP 5xx and connection errors get one retry per provider first; timeouts and 429 do not.
+After the last LLM the scripted planner finishes the same run and the badge switches to
+"rule-based fallback". The overall 50 s budget still applies: about 14 s is kept back for the
+scripted planner. The LLM pitch post-check (outcome promises, unsupported local affinity,
+stretch called a fit) runs on whichever LLM wrote the pitch.
 
 ## Environment variables
 
@@ -87,7 +95,10 @@ the reason.
 | `LLM_PROVIDER` | `gemini`, `claude` or `scripted` (optional, see above) |
 | `ANTHROPIC_API_KEY` | Enables the Claude planner |
 | `GEMINI_API_KEY` | Enables the Gemini planner |
-| `LLM_MODEL` | Model override for the selected provider |
+| `LLM_MODEL` | Model override for the primary provider |
+| `CLAUDE_MODEL` / `GEMINI_MODEL` | Per-provider model overrides |
+| `LLM_CALL_TIMEOUT_MS` | Per model call timeout (default 8000) |
+| `LLM_TEST_FAULT` | Test only: `gemini:hang`, `anthropic:503`, `all:hang` and so on make that provider hang until the call timeout or fail, to exercise the fallback |
 | `GEMINI_THINKING` | Gemini thinking level (default `low`) |
 | `AGENT_BUDGET_MS` | Total time budget per run (default 50000) |
 

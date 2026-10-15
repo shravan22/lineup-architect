@@ -7,10 +7,15 @@ import type { ToolSpec } from "./tools";
 // Provider-agnostic LLM interface for the tool-use loop. Two real providers:
 //   Claude (Anthropic Messages API, tool use)      ANTHROPIC_API_KEY
 //   Gemini (@google/genai, function calling)       GEMINI_API_KEY
-//   LLM_PROVIDER   gemini | claude | scripted (optional). Unset: claude if
-//                  ANTHROPIC_API_KEY is set, else gemini if GEMINI_API_KEY is set,
-//                  else the deterministic scripted planner in run.ts.
-//   LLM_MODEL      optional model override for the selected provider
+// selectProviders() returns a fallback chain; run.ts moves to the next provider when
+// one fails (timeout, 5xx, 429/quota, other errors) and to the scripted planner last.
+//   LLM_PROVIDER   gemini | claude | scripted (optional). Forces the primary provider;
+//                  the other provider (if its key is set) stays as the fallback.
+//                  Unset: Claude, then Gemini, for whichever keys are set.
+//   LLM_MODEL      optional model override for the primary provider
+//   CLAUDE_MODEL / GEMINI_MODEL   per-provider model overrides
+//   LLM_TEST_FAULT test only: "<provider>:hang" or "<provider>:503" (provider gemini,
+//                  anthropic or all) makes that provider hang until aborted or fail.
 // Keys are only read from env and never logged or sent to the browser.
 
 export interface ToolCall {
@@ -32,7 +37,8 @@ export interface LlmTurn {
 
 export interface LlmProvider {
   info: LlmInfo;
-  next(system: string, messages: Msg[], tools: ToolSpec[]): Promise<LlmTurn>;
+  /** One model call. `signal` aborts it (per-call timeout); the SDKs do not retry. */
+  next(system: string, messages: Msg[], tools: ToolSpec[], signal: AbortSignal): Promise<LlmTurn>;
 }
 
 export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001";
@@ -42,14 +48,54 @@ export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 // (5 calls, 0.8-2.5 s each). LLM_MODEL overrides.
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 
-export function selectProvider(): LlmProvider | null {
+/** Fallback chain of LLM providers (may be empty: the scripted planner runs). */
+export function selectProviders(): LlmProvider[] {
   const want = (process.env.LLM_PROVIDER ?? "").trim().toLowerCase();
-  if (want === "scripted") return null;
-  if (want === "gemini") return process.env.GEMINI_API_KEY ? gemini() : null;
-  if (want === "claude" || want === "anthropic") return process.env.ANTHROPIC_API_KEY ? claude() : null;
-  if (process.env.ANTHROPIC_API_KEY) return claude();
-  if (process.env.GEMINI_API_KEY) return gemini();
-  return null;
+  if (want === "scripted") return [];
+  const order: ("claude" | "gemini")[] = want === "gemini" ? ["gemini", "claude"] : ["claude", "gemini"];
+  const chain: LlmProvider[] = [];
+  for (const p of order) {
+    const primary = chain.length === 0;
+    if (p === "claude" && process.env.ANTHROPIC_API_KEY) chain.push(claude(primary));
+    if (p === "gemini" && process.env.GEMINI_API_KEY) chain.push(gemini(primary));
+  }
+  return chain;
+}
+
+/** The primary provider, or null for the scripted planner. */
+export function selectProvider(): LlmProvider | null {
+  return selectProviders()[0] ?? null;
+}
+
+/** Thrown when a call is aborted by the per-call timeout. */
+export class LlmTimeout extends Error {
+  constructor(public ms: number) {
+    super(`timed out after ${(ms / 1000).toFixed(0)} s`);
+    this.name = "LlmTimeout";
+  }
+}
+
+/** True for transient server errors worth one retry (HTTP 5xx, connection errors). Not 429, not timeouts. */
+export function isTransientError(e: unknown): boolean {
+  if (e instanceof LlmTimeout) return false;
+  const status = (e as { status?: unknown })?.status;
+  if (typeof status === "number") return status >= 500;
+  const name = e instanceof Error ? e.name : "";
+  return /Connection|FetchError|ECONNRESET|socket/i.test(name + " " + (e instanceof Error ? e.message : ""));
+}
+
+/** Test-only fault injection (LLM_TEST_FAULT), see the header comment. */
+async function testFault(provider: "anthropic" | "gemini", signal: AbortSignal) {
+  const f = (process.env.LLM_TEST_FAULT ?? "").trim().toLowerCase();
+  if (!f) return;
+  const [who, kind] = f.split(":");
+  if (who !== provider && who !== "all") return;
+  if (kind === "503") throw Object.assign(new Error("simulated overload (LLM_TEST_FAULT)"), { status: 503 });
+  if (kind === "hang")
+    await new Promise((_, reject) => {
+      if (signal.aborted) reject(signal.reason);
+      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+    });
 }
 
 /** True for rate-limit / quota failures (HTTP 429, Gemini RESOURCE_EXHAUSTED). */
@@ -71,9 +117,9 @@ export function llmErrorText(e: unknown): string {
 
 const LOCAL_ID = "local-call-";
 
-function gemini(): LlmProvider {
-  const model = process.env.LLM_MODEL || DEFAULT_GEMINI_MODEL;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { timeout: 45_000 } });
+function gemini(primary: boolean): LlmProvider {
+  const model = (primary && process.env.LLM_MODEL) || process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions: { timeout: 45_000, retryOptions: { attempts: 1 } } });
   let seq = 0;
   const toContent = (m: Msg): Content => {
     if (m.role === "user") return { role: "user", parts: [{ text: m.text }] };
@@ -94,11 +140,13 @@ function gemini(): LlmProvider {
   };
   return {
     info: { provider: "gemini", model, label: `Gemini (${model})` },
-    async next(system, messages, tools) {
-      const call = () => ai.models.generateContent({
+    async next(system, messages, tools, signal) {
+      await testFault("gemini", signal);
+      const res = await ai.models.generateContent({
         model,
         contents: messages.map(toContent),
         config: {
+          abortSignal: signal,
           systemInstruction: system,
           maxOutputTokens: 1500,
           // Default for 3.x Flash is "medium"; low keeps planning turns fast (GEMINI_THINKING overrides).
@@ -106,16 +154,6 @@ function gemini(): LlmProvider {
           tools: [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }],
         },
       });
-      let res;
-      try {
-        res = await call();
-      } catch (e) {
-        // 500/503 (model overloaded) is usually transient: one retry. 429 is not retried.
-        const status = (e as { status?: unknown })?.status;
-        if (status !== 500 && status !== 503) throw e;
-        await new Promise((r) => setTimeout(r, 1500));
-        res = await call();
-      }
       const content = res.candidates?.[0]?.content;
       const parts = content?.parts ?? [];
       const text = parts
@@ -133,12 +171,14 @@ function gemini(): LlmProvider {
   };
 }
 
-function claude(): LlmProvider {
-  const model = process.env.LLM_MODEL || DEFAULT_CLAUDE_MODEL;
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 45_000, maxRetries: 2 });
+function claude(primary: boolean): LlmProvider {
+  const model = (primary && process.env.LLM_MODEL) || process.env.CLAUDE_MODEL || DEFAULT_CLAUDE_MODEL;
+  // Retries and timeouts are handled in run.ts (one retry per provider, per-call abort).
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 45_000, maxRetries: 0 });
   return {
     info: { provider: "anthropic", model, label: `Claude (${model})` },
-    async next(system, messages, tools) {
+    async next(system, messages, tools, signal) {
+      await testFault("anthropic", signal);
       const res = await client.messages.create({
         model,
         max_tokens: 1500,
@@ -170,7 +210,7 @@ function claude(): LlmProvider {
             })),
           };
         }),
-      });
+      }, { signal });
       const text = res.content
         .filter((c): c is Anthropic.Messages.TextBlock => c.type === "text")
         .map((c) => c.text)

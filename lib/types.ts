@@ -191,6 +191,8 @@ export interface LlmInfo {
   provider: "anthropic" | "gemini" | "scripted";
   model?: string;
   label: string;
+  /** Set when this provider took over from a failed one, e.g. "fallback after Claude (...) timed out". */
+  note?: string;
 }
 
 export type AgentEvent =
