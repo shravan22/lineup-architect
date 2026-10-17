@@ -55,6 +55,9 @@ const HANDOVER_MS = 14_000;
 // a degraded Gemini first call hung for 35 s. Aborting at 8 s lets the next provider
 // (or the scripted planner) take over quickly.
 const LLM_CALL_TIMEOUT_MS = Number(process.env.LLM_CALL_TIMEOUT_MS) || 8_000; // empty or invalid: default
+// Once picks exist the next turns write the pitch (long output): Haiku took 7.3-8+ s and
+// Flash-Lite 7.4-8+ s live on 2026-10-16, so 8 s cut good pitches off. Still capped by the budget.
+const PITCH_CALL_TIMEOUT_MS = Number(process.env.PITCH_CALL_TIMEOUT_MS) || 18_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, err: () => Error = () => new OutOfTime()): Promise<T> {
   if (ms <= 0) return Promise.reject(err());
@@ -376,7 +379,7 @@ export async function runAgent(venue: VenueInput, emit: Emit): Promise<void> {
           break;
         }
         const provider = chain[pi];
-        const callMs = Math.min(LLM_CALL_TIMEOUT_MS, llmLeft);
+        const callMs = Math.min(ws.picks.length ? PITCH_CALL_TIMEOUT_MS : LLM_CALL_TIMEOUT_MS, llmLeft);
         const tCall = Date.now();
         llmTries++;
         let out;

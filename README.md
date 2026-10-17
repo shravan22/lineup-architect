@@ -74,7 +74,8 @@ Planner (`lib/agent/llm.ts` `selectProviders`, a fallback chain):
 `LLM_PROVIDER=gemini` or `claude` forces the primary; the other provider stays as the fallback
 if its key is set.
 
-Each model call is aborted after `LLM_CALL_TIMEOUT_MS` (default 8 s; healthy planning turns take
+Each planning call is aborted after `LLM_CALL_TIMEOUT_MS` (default 8 s; the pitch-writing calls after
+the acts are picked get `PITCH_CALL_TIMEOUT_MS`, default 18 s; healthy planning turns take
 1-3 s). On a timeout, HTTP 5xx, 429/quota or other error the run switches to the next provider
 for the remaining turns: the trace says why, the planner badge names the provider that is
 actually planning ("fallback"), and the new provider continues from the steps already done.
@@ -98,6 +99,7 @@ stretch called a fit) runs on whichever LLM wrote the pitch.
 | `LLM_MODEL` | Model override for the primary provider |
 | `CLAUDE_MODEL` / `GEMINI_MODEL` | Per-provider model overrides |
 | `LLM_CALL_TIMEOUT_MS` | Per model call timeout (default 8000) |
+| `PITCH_CALL_TIMEOUT_MS` | Timeout for calls once acts are picked, i.e. pitch writing (default 18000) |
 | `LLM_TEST_FAULT` | Test only: `gemini:hang`, `anthropic:503`, `all:hang` and so on make that provider hang until the call timeout or fail, to exercise the fallback |
 | `GEMINI_THINKING` | Gemini thinking level (default `low`) |
 | `AGENT_BUDGET_MS` | Total time budget per run (default 50000) |
