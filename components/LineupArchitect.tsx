@@ -48,11 +48,13 @@ const EMPTY_FORM: CustomVenueRequest & { headliners: string[] } = {
   genre: "",
 };
 
-const FLOW = [
-  { n: "01", title: "Pick a venue", text: "A sample club, or your own room: city, capacity and a few past headliners." },
-  { n: "02", title: "Watch the agent work", text: "It plans its own Qloo calls, checks results and makes booking decisions live." },
-  { n: "03", title: "Get a lineup + pitch", text: "A headliner and support acts sized to your room, the local crowd map, sponsors and a ready pitch." },
-];
+type Tab = "map" | "audience" | "sponsors";
+
+/** Planner name without model IDs or failure wording; the full text stays in the tooltip and the log. */
+function plannerShort(llm: { provider: string; label: string; note?: string }): string {
+  if (llm.provider === "scripted") return /\((?:.* )?(failed|quota reached|too slow|stopped early)\)$/.test(llm.label) ? "rule-based (fallback)" : "rule-based";
+  return `${llm.label.replace(/\s*\(.*\)\s*$/, "")}${llm.note ? " (fallback)" : ""}`;
+}
 
 export default function LineupArchitect({ status, venues }: { status: StatusInfo; venues: VenueInput[] }) {
   const [venueId, setVenueId] = useState(venues[0]?.id ?? "");
@@ -66,7 +68,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const [partial, setPartial] = useState(false);
   const [elapsed, setElapsed] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [traceOpen, setTraceOpen] = useState(true);
+  const [logOpen, setLogOpen] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(true);
+  const [tab, setTab] = useState<Tab>("map");
   const abortRef = useRef<AbortController | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +120,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         setPartial(!!e.partial);
         setElapsed(e.elapsedMs ?? null);
         setRunState((r) => (r === "error" ? r : "done"));
+        setLogOpen(false);
         break;
     }
   }, []);
@@ -151,7 +156,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     setNeedsLive(null);
     setPartial(false);
     setElapsed(null);
-    setTraceOpen(true);
+    setLogOpen(true);
+    setPickerOpen(false);
+    setTab("map");
     setRunState("running");
     requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     try {
@@ -207,14 +214,28 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const toolsDone = tools.filter((s) => s.status !== "running").length;
   const decisions = steps.filter((s) => s.kind === "decision");
   const current = [...tools].reverse().find((s) => s.status === "running");
-  const stage = runState === "idle" ? 0 : runState === "running" ? 1 : ws?.pitch ? 2 : 1;
-
   const headliner = ws?.picks[0];
   const support = ws?.picks.slice(1, 3) ?? [];
   const others = ws?.picks.slice(3) ?? [];
   const tier = ws ? roomTier(ws.venue.capacity) : undefined;
   const planner = plannerLabel(meta.llm);
-  const keyMoves = steps.filter((s) => s.kind === "decision" || s.kind === "notice");
+  const plannerText = plannerShort(meta.llm);
+
+  const collapsed = !pickerOpen && runState !== "idle";
+  const chipLabel = isCustom
+    ? `${form.name.trim() || "Your venue"} · ${form.capacity} cap`
+    : venue
+      ? `${venue.city} · ${venue.name} · ${venue.capacity} cap`
+      : "";
+
+  const tabs: { id: Tab; label: string }[] = ws
+    ? [
+        ...(ws.heatmap.length > 0 ? [{ id: "map" as Tab, label: "Crowd map" }] : []),
+        ...(ws.demographics.length > 0 || ws.unavailable.includes("demographics") ? [{ id: "audience" as Tab, label: "Audience" }] : []),
+        ...(ws.brands.length > 0 || ws.places.length > 0 ? [{ id: "sponsors" as Tab, label: "Sponsors" }] : []),
+      ]
+    : [];
+  const activeTab = tabs.find((t) => t.id === tab)?.id ?? tabs[0]?.id;
 
   const runLabel =
     runState === "running"
@@ -227,6 +248,14 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           ? "Plan the next booking"
           : "Run again";
 
+  const runButton = (
+    <button className="run" onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
+      {runState === "running" && <span className="spinner spinner-dark" aria-hidden="true" />}
+      {runLabel}
+      {runState !== "running" && <span aria-hidden="true"> →</span>}
+    </button>
+  );
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -238,387 +267,313 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         </div>
         <div className="badges" aria-label="Data and agent mode">
           {sample ? (
-            <span className="badge badge-sample" title="No Qloo API key on this server: preset results are real Qloo API responses recorded earlier and replayed, not live calls.">
+            <span className="badge badge-sample" title={`${recLabel}. No Qloo API key on this server: preset results are real Qloo API responses recorded earlier and replayed, not live calls.`}>
               <i className="dot-ind" aria-hidden="true" />
-              {recLabel}
+              Recorded Qloo data
             </span>
           ) : (
-            <span className="badge badge-live" title="Every Qloo call in this run goes to the live hackathon API (repeat calls within 24 h may be served from the server cache, marked 'cache' in the trace).">
+            <span className="badge badge-live" title="Every Qloo call in this run goes to the live hackathon API (repeat calls within 24 h may be served from the server cache, marked 'cache' in the log).">
               <i className="dot-ind" aria-hidden="true" />
               Live Qloo API
             </span>
           )}
-          <span className={`badge ${meta.llm.provider === "scripted" ? "badge-scripted" : "badge-llm"}`} title={planner.title}>
-            {planner.text}
+          <span className="badge badge-plain" title={`${planner.text}. ${planner.title}`}>
+            Planner: {plannerText}
           </span>
         </div>
       </header>
 
-      <section className="hero" aria-labelledby="hero-h">
-        <p className="kicker">Venue-first booking agent on Qloo taste data</p>
+      <section className="setup" aria-labelledby="hero-h">
         <h1 id="hero-h">
           Book the acts <span className="hl">your neighbourhood</span> already loves.
         </h1>
         <p className="lede">
-          For talent buyers at 200-2,000-cap rooms with no analytics team. Lineup Architect is an agent that uses <strong>Qloo taste data</strong> to
-          find artists whose fans overlap with your past headliners, checks they suit your room size, maps where that taste is concentrated in your
-          city, and writes the booking pitch.
+          For talent buyers at 200-2,000-cap rooms: an agent that reads <strong>Qloo taste data</strong>, books acts sized to your room and writes the
+          pitch.
         </p>
-        <ol className="flow" aria-label="How it works">
-          {FLOW.map((f, i) => (
-            <li key={f.n} className={`flow-step ${stage === i ? "is-now" : stage > i ? "is-done" : ""}`} aria-current={stage === i ? "step" : undefined}>
-              <span className="flow-n">{stage > i ? "✓" : f.n}</span>
-              <div>
-                <strong>{f.title}</strong>
-                <span>{f.text}</span>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+        {sample && (
+          <p className="banner" role="note" title="The scores are Qloo's, just not fetched right now (trimmed to the fields the app reads).">
+            <strong>Recorded mode:</strong> the sample venues replay real Qloo API responses{meta.recordedOn ? ` from ${meta.recordedOn}` : ""}. Your own
+            venue needs a live key.
+          </p>
+        )}
 
-      {sample && (
-        <p className="banner" role="note">
-          <strong>Recorded mode.</strong> This server has no Qloo API key, so the five sample venues replay real Qloo API responses{" "}
-          {meta.recordedOn ? `recorded on ${meta.recordedOn}` : "recorded earlier"} (trimmed to the fields the app reads). The scores are Qloo&apos;s,
-          just not fetched right now. Your own venue needs a live key.
-        </p>
-      )}
-
-      <section className="block setup" aria-labelledby="setup-h">
-        <div className="block-head">
-          <span className="block-n">01</span>
-          <div>
-            <h2 id="setup-h">Pick a venue</h2>
-            <p className="caption">Each sample is a real kind of room. The agent uses its past headliners as the taste signal and its capacity to size the acts.</p>
+        {collapsed ? (
+          <div className="venue-chip-row">
+            <span className="venue-chip">
+              <span className="sr-only">Venue: </span>
+              {chipLabel}
+              <button className="linkish" onClick={() => setPickerOpen(true)} disabled={runState === "running"}>
+                Change
+              </button>
+            </span>
+            {runButton}
           </div>
-        </div>
-        <fieldset className="venues">
-          <legend className="sr-only">Venues</legend>
-          {venues.map((v) => (
-            <label key={v.id} className={`venue ${v.id === venueId ? "selected" : ""}`}>
-              <input type="radio" name="venue" value={v.id} checked={v.id === venueId} onChange={() => setVenueId(v.id)} />
-              <span className="venue-city">{v.city}</span>
-              <span className="venue-name">{v.name}</span>
-              <span className="venue-meta">
-                {v.capacity} cap · {roomTier(v.capacity).name} · {v.genreHint}
-              </span>
-            </label>
-          ))}
-          <label className={`venue venue-custom ${isCustom ? "selected" : ""}`}>
-            <input type="radio" name="venue" value={CUSTOM} checked={isCustom} onChange={() => setVenueId(CUSTOM)} />
-            <span className="venue-city">Any city</span>
-            <span className="venue-name">+ Your venue</span>
-            <span className="venue-meta">Your capacity and past headliners{sample ? " (needs a live Qloo key)" : ""}</span>
-          </label>
-        </fieldset>
-
-        <div className="selected-bar">
-          {!isCustom && venue && (
-            <div className="selected-info">
-              <p className="venue-blurb">{venue.blurb}</p>
-              <p className="venue-heads">
-                Past headliners (the taste signal): <strong>{venue.headliners.join(", ")}</strong>
-              </p>
-            </div>
-          )}
-
-          {isCustom && (
-            <form
-              className="custom-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                run();
-              }}
-              noValidate
-            >
-              <label>
-                Venue name
-                <input value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. The Velvet Room" required />
+        ) : (
+          <>
+            <fieldset className="venues">
+              <legend className="sr-only">Venues</legend>
+              {venues.map((v) => (
+                <label key={v.id} className={`venue ${v.id === venueId ? "selected" : ""}`}>
+                  <input type="radio" name="venue" value={v.id} checked={v.id === venueId} onChange={() => setVenueId(v.id)} />
+                  <span className="venue-city">{v.city}</span>
+                  <span className="venue-name">{v.name}</span>
+                  <span className="venue-meta">
+                    {v.capacity} cap · {v.genreHint}
+                  </span>
+                </label>
+              ))}
+              <label className={`venue venue-custom ${isCustom ? "selected" : ""}`}>
+                <input type="radio" name="venue" value={CUSTOM} checked={isCustom} onChange={() => setVenueId(CUSTOM)} />
+                <span className="venue-city">Any city</span>
+                <span className="venue-name">+ Your venue</span>
+                <span className="venue-meta">{sample ? "Needs a live Qloo key" : "Your room, your headliners"}</span>
               </label>
-              <div className="row">
-                <label>
-                  City
-                  <select value={form.cityId} onChange={(e) => setForm({ ...form, cityId: e.target.value })}>
-                    <optgroup label="United States">
-                      {CITIES.filter((c) => c.region === "US").map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Europe">
-                      {CITIES.filter((c) => c.region === "Europe").map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <option value={OTHER_CITY}>Other (located via Qloo)</option>
-                  </select>
-                </label>
-                <label className="cap">
-                  Capacity
-                  <input
-                    type="number"
-                    min={50}
-                    max={20000}
-                    step={10}
-                    value={form.capacity || ""}
-                    onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
-                  />
-                </label>
-              </div>
-              {form.cityId === OTHER_CITY && (
-                <label>
-                  City name
-                  <input value={form.otherCity} maxLength={60} onChange={(e) => setForm({ ...form, otherCity: e.target.value })} placeholder="e.g. Leeds" />
-                </label>
-              )}
-              <fieldset className="heads">
-                <legend>Past headliners (1-3): acts that did well in your room</legend>
-                {form.headliners.map((h, i) => (
-                  <input
-                    key={i}
-                    value={h}
-                    maxLength={80}
-                    aria-label={`Past headliner ${i + 1}`}
-                    placeholder={["e.g. Khruangbin", "optional", "optional"][i]}
-                    onChange={(e) => setHeadliner(i, e.target.value)}
-                  />
-                ))}
-              </fieldset>
-              <label>
-                Genre focus <small>(optional)</small>
-                <input value={form.genre} maxLength={40} onChange={(e) => setForm({ ...form, genre: e.target.value })} placeholder="e.g. psych rock" />
-              </label>
-              <p className="hint">
-                {form.capacity >= 50
-                  ? `A ${form.capacity}-cap room is a ${formTier.name.toLowerCase()} (${formTier.range}): the agent looks for acts with Qloo popularity ${bandLabel(formBand)}. `
-                  : ""}
-                It caps the search at that ceiling if stretch acts crowd the list, or widens it if too few acts fit.
-              </p>
-              {formError && (
-                <p className="error" role="alert">
-                  {formError}
+            </fieldset>
+
+            <div className="selected-bar">
+              {!isCustom && venue && (
+                <p className="selected-info" title={venue.blurb}>
+                  {roomTier(venue.capacity).name} · past headliners (the taste signal): <strong>{venue.headliners.join(", ")}</strong>
                 </p>
               )}
-            </form>
-          )}
 
-          <button className="run" onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
-            {runState === "running" && <span className="spinner spinner-dark" aria-hidden="true" />}
-            {runLabel}
-            {runState !== "running" && <span aria-hidden="true"> →</span>}
-          </button>
-        </div>
+              {isCustom && (
+                <form
+                  className="custom-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    run();
+                  }}
+                  noValidate
+                >
+                  <label>
+                    Venue name
+                    <input value={form.name} maxLength={80} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. The Velvet Room" required />
+                  </label>
+                  <div className="row">
+                    <label>
+                      City
+                      <select value={form.cityId} onChange={(e) => setForm({ ...form, cityId: e.target.value })}>
+                        <optgroup label="United States">
+                          {CITIES.filter((c) => c.region === "US").map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Europe">
+                          {CITIES.filter((c) => c.region === "Europe").map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <option value={OTHER_CITY}>Other (located via Qloo)</option>
+                      </select>
+                    </label>
+                    <label className="cap">
+                      Capacity
+                      <input
+                        type="number"
+                        min={50}
+                        max={20000}
+                        step={10}
+                        value={form.capacity || ""}
+                        onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
+                      />
+                    </label>
+                  </div>
+                  {form.cityId === OTHER_CITY && (
+                    <label>
+                      City name
+                      <input value={form.otherCity} maxLength={60} onChange={(e) => setForm({ ...form, otherCity: e.target.value })} placeholder="e.g. Leeds" />
+                    </label>
+                  )}
+                  <fieldset className="heads">
+                    <legend>Past headliners (1-3): acts that did well in your room</legend>
+                    {form.headliners.map((h, i) => (
+                      <input
+                        key={i}
+                        value={h}
+                        maxLength={80}
+                        aria-label={`Past headliner ${i + 1}`}
+                        placeholder={["e.g. Khruangbin", "optional", "optional"][i]}
+                        onChange={(e) => setHeadliner(i, e.target.value)}
+                      />
+                    ))}
+                  </fieldset>
+                  <label>
+                    Genre focus <small>(optional)</small>
+                    <input value={form.genre} maxLength={40} onChange={(e) => setForm({ ...form, genre: e.target.value })} placeholder="e.g. psych rock" />
+                  </label>
+                  {form.capacity >= 50 && (
+                    <p className="hint" title="The agent caps the search at the ceiling if stretch acts crowd the list, or widens it if too few acts fit.">
+                      {`A ${form.capacity}-cap room is a ${formTier.name.toLowerCase()} (${formTier.range}): the agent looks for Qloo popularity ${bandLabel(formBand)}.`}
+                    </p>
+                  )}
+                  {formError && (
+                    <p className="error" role="alert">
+                      {formError}
+                    </p>
+                  )}
+                </form>
+              )}
+
+              {runButton}
+            </div>
+          </>
+        )}
       </section>
 
       <div className="workspace" ref={resultsRef}>
-        <aside className="block rail" aria-labelledby="trace-h">
-          <div className="block-head">
-            <span className="block-n">02</span>
-            <div>
-              <h2 id="trace-h">Watch the agent work</h2>
-              <p className="caption">Every Qloo call the planner chose to make, what came back, and each decision it took, streamed as it happens.</p>
+        {runState !== "idle" && (
+          <section className="agent" aria-labelledby="agent-h" aria-live="polite">
+            <div className="agent-stats">
+              <h2 id="agent-h" className="mini-h">
+                Agent run
+              </h2>
+              <span className="stat">
+                <strong>{runState === "running" ? `${toolsDone}/${tools.length || "-"}` : toolsDone}</strong> Qloo calls
+              </span>
+              <span className="stat">
+                <strong>{decisions.length}</strong> decision{decisions.length === 1 ? "" : "s"}
+              </span>
+              {elapsed !== null && !needsLive && (
+                <span className="stat">
+                  <strong>{(elapsed / 1000).toFixed(1)}</strong> s{partial ? " (time budget reached)" : ""}
+                </span>
+              )}
+              <span className="stat stat-planner" title={planner.title}>
+                planner: {plannerText}
+              </span>
             </div>
-          </div>
-
-          <div className="progress" aria-live="polite">
-            {runState === "idle" ? (
-              <span>Waiting for a venue. Press “{runLabel}” to start.</span>
-            ) : (
+            {runState === "running" && (
               <>
-                <span className="prog-stat">
-                  <strong>{toolsDone}</strong>/{tools.length || "-"} Qloo tool calls
-                </span>
-                <span className="prog-stat">
-                  <strong>{decisions.length}</strong> decision{decisions.length === 1 ? "" : "s"}
-                </span>
-                {runState === "running" && current && <span className="prog-now">Now: {current.label}</span>}
-                {runState === "done" && elapsed !== null && !needsLive && (
-                  <span className="prog-now">
-                    Finished in {(elapsed / 1000).toFixed(1)} s{partial ? " (partial: time budget reached)" : ""}
-                  </span>
+                <p className="agent-now">
+                  <span className="spinner" aria-hidden="true" /> {current ? `Now: ${current.label}` : "Starting the agent..."}
+                </p>
+                {tools.length > 0 && (
+                  <div className="progbar" aria-hidden="true">
+                    <span style={{ width: `${Math.round((toolsDone / Math.max(tools.length, 1)) * 100)}%` }} />
+                  </div>
                 )}
               </>
             )}
-          </div>
-          {runState === "running" && tools.length > 0 && (
-            <div className="progbar" aria-hidden="true">
-              <span style={{ width: `${Math.round((toolsDone / Math.max(tools.length, 1)) * 100)}%` }} />
-            </div>
-          )}
-
-          {steps.length > 0 && (
-            <button className="linkish" aria-expanded={traceOpen} aria-controls="trace-list" onClick={() => setTraceOpen((o) => !o)}>
-              {traceOpen ? "Hide step-by-step log" : `Show step-by-step log (${steps.length} steps)`}
-            </button>
-          )}
-
-          <div id="trace-list" hidden={!traceOpen}>
-            {runState === "idle" && (
-              <ul className="legend-list">
-                <li>
-                  <span className="tag tag-tool">Tool</span> a call to the Qloo API (search, taste tags, insights, map)
-                </li>
-                <li>
-                  <span className="tag tag-decision">Decision</span> the agent changes course, e.g. picks the right artist for an ambiguous name or widens the
-                  search
-                </li>
-                <li>
-                  <span className="tag tag-thought">Plan</span> what it intends to do next
-                </li>
+            {decisions.length > 0 && (
+              <ul className="agent-decisions">
+                {decisions.slice(0, 3).map((d) => (
+                  <li key={d.id} title={d.detail}>
+                    {d.label}
+                  </li>
+                ))}
+                {decisions.length > 3 && <li className="more-note">+{decisions.length - 3} more in the full log</li>}
               </ul>
             )}
-            <ol className="trace">
-              {steps.map((s) => (
-                <li key={s.id} className={`step step-${s.kind} step-${s.status}`}>
-                  {s.kind === "tool" ? (
-                    <>
-                      <span className="step-icon" aria-hidden="true">
-                        {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : s.status === "unavailable" ? "–" : "!"}
-                      </span>
-                      <div className="step-main">
-                        <div className="step-label">
-                          {s.label}
-                          {s.status === "unavailable" && <span className="src src-unavailable">unavailable on hackathon key</span>}
-                          {s.sources?.map((src, i) => (
-                            <span key={i} className={`src src-${src}`}>
-                              {src === "fixture" ? "recorded" : src}
-                            </span>
-                          ))}
-                          {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
+
+            {steps.length > 0 && (
+              <details className="log" open={logOpen} onToggle={(e) => setLogOpen(e.currentTarget.open)}>
+                <summary>{logOpen ? "Hide full log" : `Show full log (${steps.length} steps)`}</summary>
+                <ol className="trace">
+                  {steps.map((s) => (
+                    <li key={s.id} className={`step step-${s.kind} step-${s.status}`}>
+                      {s.kind === "tool" ? (
+                        <>
+                          <span className="step-icon" aria-hidden="true">
+                            {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : s.status === "unavailable" ? "–" : "!"}
+                          </span>
+                          <div className="step-main">
+                            <div className="step-label">
+                              {s.label}
+                              {s.status === "unavailable" && <span className="src src-unavailable">unavailable on hackathon key</span>}
+                              {s.sources?.map((src, i) => (
+                                <span key={i} className={`src src-${src}`}>
+                                  {src === "fixture" ? "recorded" : src}
+                                </span>
+                              ))}
+                              {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
+                            </div>
+                            {s.detail && <div className="step-detail">{s.detail}</div>}
+                            {s.endpoints && s.endpoints.length > 0 && <div className="step-endpoint">{s.endpoints.join(", ")}</div>}
+                          </div>
+                        </>
+                      ) : s.kind === "decision" ? (
+                        <div className="decision">
+                          <span className="tag tag-decision">Decision</span>
+                          <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the rule-based planner"}</span>
+                          <div className="decision-title">{s.label}</div>
+                          {s.detail && <div className="decision-detail">{s.detail}</div>}
                         </div>
-                        {s.detail && <div className="step-detail">{s.detail}</div>}
-                        {s.endpoints && s.endpoints.length > 0 && <div className="step-endpoint">{s.endpoints.join(", ")}</div>}
-                      </div>
-                    </>
-                  ) : s.kind === "decision" ? (
-                    <div className="decision">
-                      <div className="decision-head">
-                        <span className="tag tag-decision">Decision</span>
-                        <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the scripted planner"}</span>
-                      </div>
-                      <div className="decision-title">{s.label}</div>
-                      {s.detail && <div className="decision-detail">{s.detail}</div>}
-                    </div>
-                  ) : (
-                    <p className="thought">
-                      <span className="who">{s.kind === "notice" ? "Notice" : s.by === "llm" ? "Agent plan" : "Planner"}</span> {s.label}
-                    </p>
-                  )}
-                </li>
+                      ) : (
+                        <p className="thought">
+                          <span className="who">{s.kind === "notice" ? "Notice" : s.by === "llm" ? "Agent plan" : "Planner"}</span> {s.label}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </section>
+        )}
+
+        {error && (
+          <p className="error" role="alert">
+            {error} <button onClick={run}>Retry</button>
+          </p>
+        )}
+
+        {needsLive && (
+          <div className="card-block needs-live" role="status">
+            <h3>Needs a live Qloo key</h3>
+            <p>{needsLive.text}</p>
+            <p className="caption">With a key, the agent would run these steps for your venue:</p>
+            <ol className="plan">
+              {needsLive.plan.map((p) => (
+                <li key={p}>{p}</li>
               ))}
             </ol>
-            {runState === "running" && steps.length === 0 && <p className="empty">Starting the agent...</p>}
+            <p className="caption">Meanwhile, try one of the five sample venues to see the full flow on recorded Qloo responses.</p>
           </div>
-          {error && (
-            <p className="error" role="alert">
-              {error} <button onClick={run}>Retry</button>
-            </p>
-          )}
-        </aside>
+        )}
 
-        <section className="results" aria-labelledby="results-h">
-          <div className="block-head">
-            <span className="block-n">03</span>
-            <div>
-              <h2 id="results-h">Your lineup and pitch</h2>
-              <p className="caption">The agent&apos;s recommendation first, then the evidence behind it: where the crowd is, who they are, and who could sponsor.</p>
+        {partial && ws && (
+          <p className="banner partial" role="note">
+            <strong>Partial result.</strong> The agent hit its time budget before every step finished. Each section with data is complete; the pitch is a
+            template.
+          </p>
+        )}
+
+        {!needsLive && !ws?.picks.length && runState === "running" && (
+          <div className="placeholder" aria-hidden="true">
+            <div className="skeleton tall" />
+            <div className="skeleton-row">
+              <div className="skeleton" />
+              <div className="skeleton" />
             </div>
           </div>
+        )}
+        {!needsLive && !ws?.picks.length && runState === "done" && <p className="empty">The agent finished without candidates. Check the full log for errors.</p>}
 
-          {needsLive && (
-            <div className="card-block needs-live" role="status">
-              <h3>Needs a live Qloo key</h3>
-              <p>{needsLive.text}</p>
-              <p className="caption">With a key, the agent would run these steps for your venue:</p>
-              <ol className="plan">
-                {needsLive.plan.map((p) => (
-                  <li key={p}>{p}</li>
-                ))}
-              </ol>
-              <p className="caption">Meanwhile, try one of the five sample venues to see the full flow on recorded Qloo responses.</p>
-            </div>
-          )}
-
-          {partial && ws && (
-            <p className="banner partial" role="note">
-              <strong>Partial result.</strong> The agent hit its time budget before every step finished. Each section with data is complete; the pitch is a
-              template.
-            </p>
-          )}
-
-          {!needsLive && !ws?.picks.length && (
-            <div className="card-block placeholder">
-              {runState === "running" ? (
-                <>
-                  <p className="placeholder-title">
-                    <span className="spinner" aria-hidden="true" /> The agent is querying Qloo{current ? `: ${current.label.toLowerCase()}` : "..."}
-                  </p>
-                  <div className="skeleton tall" />
-                  <div className="skeleton-row">
-                    <div className="skeleton" />
-                    <div className="skeleton" />
-                  </div>
-                </>
-              ) : runState === "done" ? (
-                <p className="empty">The agent finished without candidates. Check the agent log for errors.</p>
-              ) : (
-                <div className="placeholder-idle">
-                  <p className="placeholder-title">Nothing booked yet.</p>
-                  <p className="caption">
-                    Pick a venue above and press “{runLabel}”. In a few seconds you get a headliner and two support acts, a map of where their taste is
-                    concentrated, the fans&apos; age and gender mix, brands to pitch for sponsorship, and a pitch you can download.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {ws && headliner && (
-            <div className="card-block lineup">
-              <div className="card-head">
-                <h3>Recommended lineup {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
-                <p className="caption">
-                  Ranked by Qloo taste match with your past headliners, with acts that suit your room size listed first.
-                </p>
-              </div>
-
+        {ws && headliner && (
+          <div className={`answer ${ws.pitch ? "has-pitch" : ""}`}>
+            <section className="card-block lineup" aria-labelledby="lineup-h">
+              <h2 id="lineup-h" className="sec-h">
+                Recommended lineup
+              </h2>
               {ws.band && tier && (
-                <p className="room-line" title={`Qloo popularity is a 0-100 rank of how widely known an artist is. The capacity-to-range mapping is a heuristic. Queries: ${ws.band.history.join("; ")}`}>
-                  <span className="room-tier">
-                    {tier.name} · {tier.range}
-                  </span>
-                  <span>
-                    {ws.venue.name} holds {ws.venue.capacity}, so acts with Qloo popularity <strong>{bandLabel(ws.band.target)}</strong> count as in this
-                    room&apos;s tier (a heuristic). The agent&apos;s last search covered <strong>{bandLabel(ws.band.used)}</strong>
-                    {ws.band.used.max > ws.band.target.max ? ", a little above the ceiling, so stretch picks show up" : ""}.
-                  </span>
+                <p
+                  className="room-line"
+                  title={`${ws.venue.name} holds ${ws.venue.capacity}. Qloo popularity is a 0-100 rank of how widely known an artist is; the capacity-to-range mapping is a heuristic. Last search covered ${bandLabel(ws.band.used)}. Queries: ${ws.band.history.join("; ")}`}
+                >
+                  {tier.name} ({ws.venue.capacity} cap) → in-tier acts have Qloo popularity <strong>{bandLabel(ws.band.target)}</strong>
+                  {ws.band.used.max > ws.band.target.max ? `; searched up to ${bandLabel(ws.band.used)} for stretch picks` : ""}
                 </p>
-              )}
-
-              {keyMoves.length > 0 && (
-                <div className="decided">
-                  <span className="mini-h">What the agent decided on this run</span>
-                  <ul>
-                    {keyMoves.map((d) => (
-                      <li key={d.id}>
-                        <span className={`tag ${d.kind === "decision" ? "tag-decision" : "tag-notice"}`}>{d.kind === "decision" ? "Decision" : "Notice"}</span>
-                        <span>
-                          <strong>{d.label}</strong>
-                          {d.detail && <span className="decided-detail"> {d.detail}</span>}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               )}
 
               <article className="headliner" aria-label={`Headliner pick: ${headliner.name}`}>
                 <span className="slot">Headliner</span>
-                <h4 className="act-name">{headliner.name}</h4>
+                <h3 className="act-name">{headliner.name}</h3>
                 <ActMeta p={headliner} />
                 {headliner.shortDescription && <p className="act-desc">{headliner.shortDescription}</p>}
                 <Why p={headliner} open />
@@ -629,64 +584,52 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   {support.map((p, i) => (
                     <article key={p.entityId} className="support-card" aria-label={`Support pick ${i + 1}: ${p.name}`}>
                       <span className="slot">Support {i + 1}</span>
-                      <h4 className="act-name small">{p.name}</h4>
+                      <h3 className="act-name small">{p.name}</h3>
                       <ActMeta p={p} />
-                      {p.shortDescription && <p className="act-desc">{p.shortDescription}</p>}
                       <Why p={p} />
                     </article>
                   ))}
                 </div>
               )}
 
-              {others.length > 0 && (
-                <details className="others">
-                  <summary>Also considered: {others.length} more acts</summary>
-                  <ol className="others-list" start={4}>
-                    {others.map((p) => (
-                      <li key={p.entityId}>
-                        <span className="others-name">{p.name}</span>
-                        <span className={`verdict verdict-${p.drawFit ?? "unknown"}`} title={DRAW_FIT_TEXT[p.drawFit ?? "unknown"].long}>
-                          {VERDICT[p.drawFit ?? "unknown"]}
-                        </span>
-                        <span className="others-score" title={`Qloo affinity ${pct(p.affinity)}/100, popularity ${pct(p.popularity)}/100`}>
-                          {tasteWord(p.affinity)}
-                        </span>
-                      </li>
+              <details className="more">
+                <summary>Details{others.length > 0 ? `: ${others.length} more acts considered, ` : ": "}your room&apos;s sound, how to read this</summary>
+                {ws.unavailable.includes("taste_profile") && (
+                  <p className="unavail-note" role="note">
+                    Venue taste profile unavailable on this Qloo key (urn:tag returned 403). Acts are ranked without the shared-tag check.
+                    {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
+                  </p>
+                )}
+                {ws.tasteTags.length > 0 && (
+                  <p className="taste">
+                    <span className="mini-h">Your room&apos;s sound, per Qloo tags:</span>
+                    {ws.tasteTags.slice(0, 6).map((t) => (
+                      <span key={t.id} className="chip">
+                        {t.name}
+                      </span>
                     ))}
-                  </ol>
-                </details>
-              )}
-
-              {ws.explain && (
-                <p className="explain-sum" title="Qloo feature.explainability: average influence of each past headliner on the recommendations">
-                  <span className="mini-h">Which past headliners drove these picks</span> (Qloo explainability, {ws.explain.subset}):{" "}
-                  {ws.explain.drivers.map((d) => (
-                    <span key={d.entityId} className="chip chip-driver">
-                      {d.name} {Math.round(d.score * 100)}%
-                    </span>
-                  ))}
-                </p>
-              )}
-              {ws.unavailable.includes("taste_profile") && (
-                <p className="unavail-note" role="note">
-                  Venue taste profile unavailable on this Qloo key (urn:tag returned 403). Acts are ranked without the shared-tag check.
-                  {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
-                </p>
-              )}
-              {ws.tasteTags.length > 0 && (
-                <p className="taste">
-                  <span className="mini-h">Your room&apos;s sound, per Qloo tags:</span>
-                  {ws.tasteTags.slice(0, 6).map((t) => (
-                    <span key={t.id} className="chip">
-                      {t.name}
-                    </span>
-                  ))}
-                </p>
-              )}
-
-              <details className="glossary">
-                <summary>How to read this</summary>
-                <dl>
+                  </p>
+                )}
+                {others.length > 0 && (
+                  <>
+                    <h4 className="mini-h">Also considered</h4>
+                    <ol className="others-list" start={4}>
+                      {others.map((p) => (
+                        <li key={p.entityId}>
+                          <span className="others-name">{p.name}</span>
+                          <span className={`verdict verdict-${p.drawFit ?? "unknown"}`} title={DRAW_FIT_TEXT[p.drawFit ?? "unknown"].long}>
+                            {VERDICT[p.drawFit ?? "unknown"]}
+                          </span>
+                          <span className="others-score" title={`Qloo affinity ${pct(p.affinity)}/100, popularity ${pct(p.popularity)}/100`}>
+                            {tasteWord(p.affinity)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+                <h4 className="mini-h">How to read this</h4>
+                <dl className="glossary">
                   <dt>Taste match (Qloo affinity)</dt>
                   <dd>How strongly fans of your past headliners also like this act, on Qloo&apos;s 0-100 scale. Hover a match label to see the score.</dd>
                   <dt>Popularity and room size</dt>
@@ -700,165 +643,176 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <dd>Qloo reports which of your past headliners pulled each act into the results, and by how much.</dd>
                 </dl>
               </details>
-            </div>
-          )}
+            </section>
 
-          {ws && ws.heatmap.length > 0 && (
-            <div className="card-block">
-              <div className="card-head">
-                <h3>Where this taste is concentrated {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
-                <p className="caption">
-                  Qloo ranks areas of {ws.venue.city} by how much they like {ws.heatmapSubject.join(", ")}. Darker = stronger taste. This shows relative taste,
-                  not fan counts.
-                </p>
-              </div>
-              {conc && (
-                <p className="stat-line">
-                  <strong>{conc.verdict}.</strong> {conc.hotPct}% of the hottest areas are within {conc.km} km of{" "}
-                  {ws.venue.custom ? "the city centre" : "the venue"}, vs {conc.allPct}% of all mapped areas.
-                </p>
+            {ws.pitch && (
+              <article className="card-block pitch" aria-labelledby="pitch-h">
+                <div className="pitch-head">
+                  <h2 id="pitch-h" className="sec-h">
+                    Booking pitch
+                  </h2>
+                  <div className="pitch-actions">
+                    <button onClick={download}>Download .md</button>
+                    <button onClick={() => window.print()}>Print / PDF</button>
+                  </div>
+                </div>
+                <div className="pitch-paper">
+                  <h4>{ws.pitch.headline}</h4>
+                  <p>{ws.pitch.summary}</p>
+                  <h5>Recommended acts</h5>
+                  <ul>
+                    {ws.pitch.pickRationales.map((r) => (
+                      <li key={r.artist}>
+                        <strong>{r.artist}:</strong> {r.why}
+                      </li>
+                    ))}
+                  </ul>
+                  <h5>Sponsor angle</h5>
+                  <p>{ws.pitch.sponsorAngle}</p>
+                  <p className="provenance">
+                    {sample && <strong>Built from recorded Qloo responses ({meta.recordedOn ?? "earlier run"}): re-run live before sending. </strong>}
+                    Data: Qloo Insights API{sample ? `, ${recLabel.replace("Recorded from the Qloo API", "recorded")}` : ", live"}. Text:{" "}
+                    {ws.pitch.author === "llm" ? `written by ${meta.llm.label} from the Qloo results` : "deterministic template"}. Affinity scores describe
+                    correlations in taste, not predictions about individuals or ticket sales.
+                  </p>
+                  {ws.pitch.checkNote && <p className="provenance">{ws.pitch.checkNote}</p>}
+                </div>
+              </article>
+            )}
+          </div>
+        )}
+
+        {ws && activeTab && (
+          <section className="card-block evidence" aria-label="Evidence behind the lineup">
+            <div className="tabs" role="tablist" aria-label="Evidence">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  role="tab"
+                  id={`tab-${t.id}`}
+                  aria-selected={activeTab === t.id}
+                  aria-controls={`panel-${t.id}`}
+                  tabIndex={activeTab === t.id ? 0 : -1}
+                  className={`tab ${activeTab === t.id ? "is-active" : ""}`}
+                  onClick={() => setTab(t.id)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                    const i = tabs.findIndex((x) => x.id === activeTab);
+                    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+                    setTab(next.id);
+                    document.getElementById(`tab-${next.id}`)?.focus();
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} className="tabpanel">
+              {activeTab === "map" && (
+                <>
+                  <p className="stat-line">
+                    {conc && (
+                      <>
+                        <strong>{conc.verdict}.</strong> {conc.hotPct}% of the hottest areas are within {conc.km} km of{" "}
+                        {ws.venue.custom ? "the city centre" : "the venue"}, vs {conc.allPct}% of all mapped areas.{" "}
+                      </>
+                    )}
+                    <span className="faint">
+                      Qloo taste for {ws.heatmapSubject.join(", ")} across {ws.venue.city}: relative taste, not fan counts.
+                    </span>
+                  </p>
+                  <AffinityMap venue={ws.venue} points={ws.heatmap} places={ws.places} />
+                  <div className="legend" aria-hidden="true">
+                    <span className="ramp">
+                      <span>Lower taste</span>
+                      <i style={{ background: "#fee08b" }} />
+                      <i style={{ background: "#fdae61" }} />
+                      <i style={{ background: "#f46d43" }} />
+                      <i style={{ background: "#d73027" }} />
+                      <i style={{ background: "#a50026" }} />
+                      <span>Higher</span>
+                    </span>
+                    <span>
+                      <i className="dot venue-dot" />
+                      {ws.venue.custom ? "City centre" : "Venue"}
+                    </span>
+                    <span>
+                      <i className="dot place-dot" />
+                      Partner spot
+                    </span>
+                  </div>
+                </>
               )}
-              <AffinityMap venue={ws.venue} points={ws.heatmap} places={ws.places} />
-              <div className="legend" aria-hidden="true">
-                <span className="ramp">
-                  <span>Lower taste</span>
-                  <i style={{ background: "#fee08b" }} />
-                  <i style={{ background: "#fdae61" }} />
-                  <i style={{ background: "#f46d43" }} />
-                  <i style={{ background: "#d73027" }} />
-                  <i style={{ background: "#a50026" }} />
-                  <span>Higher</span>
-                </span>
-                <span>
-                  <i className="dot venue-dot" />
-                  {ws.venue.custom ? "City centre" : "Venue"}
-                </span>
-                <span>
-                  <i className="dot place-dot" />
-                  Partner spot
-                </span>
-              </div>
-            </div>
-          )}
 
-          {ws && ws.demographics.length === 0 && ws.unavailable.includes("demographics") && (
-            <div className="card-block">
-              <h3>Who the fans are</h3>
-              <p className="unavail-note" role="note">
-                Unavailable on the hackathon key: Qloo answered 403 for audience demographics (urn:demographics), so age and gender skew is not shown. The
-                rest of the plan and the pitch do not depend on it.
-                {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
-              </p>
-            </div>
-          )}
-
-          {ws && ws.demographics.length > 0 && (
-            <div className="card-block">
-              <div className="card-head">
-                <h3>Who the fans are {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
-                <p className="caption">
-                  Age and gender lean of each act&apos;s fans compared with the average Qloo user. Bars right of the line = more likely than average, left =
-                  less. Useful for marketing and sponsor fit.
-                </p>
-              </div>
-              <div className="demo-grid">
-                {ws.demographics.map((d) => (
-                  <figure key={d.entityId} className="demo">
-                    <figcaption>{d.name}</figcaption>
-                    <table className="skew">
-                      <tbody>
-                        {Object.entries(d.age).map(([k, v]) => (
-                          <SkewRow key={k} label={AGE_LABELS[k] ?? k} v={v} />
-                        ))}
-                        {Object.entries(d.gender).map(([k, v]) => (
-                          <SkewRow key={k} label={k} v={v} />
-                        ))}
-                      </tbody>
-                    </table>
-                  </figure>
+              {activeTab === "audience" &&
+                (ws.demographics.length === 0 ? (
+                  <p className="unavail-note" role="note">
+                    Unavailable on the hackathon key: Qloo answered 403 for audience demographics (urn:demographics), so age and gender skew is not shown.
+                    The rest of the plan and the pitch do not depend on it.
+                    {ws.venue.simulate === "403" && " (Simulated 403 in recorded mode.)"}
+                  </p>
+                ) : (
+                  <>
+                    <p className="stat-line faint">Fans&apos; age and gender lean vs the average Qloo user: right of the line = more likely than average.</p>
+                    <div className="demo-grid">
+                      {ws.demographics.map((d) => (
+                        <figure key={d.entityId} className="demo">
+                          <figcaption>{d.name}</figcaption>
+                          <table className="skew">
+                            <tbody>
+                              {Object.entries(d.age).map(([k, v]) => (
+                                <SkewRow key={k} label={AGE_LABELS[k] ?? k} v={v} />
+                              ))}
+                              {Object.entries(d.gender).map(([k, v]) => (
+                                <SkewRow key={k} label={k} v={v} />
+                              ))}
+                            </tbody>
+                          </table>
+                        </figure>
+                      ))}
+                    </div>
+                  </>
                 ))}
-              </div>
-            </div>
-          )}
 
-          {ws && (ws.brands.length > 0 || ws.places.length > 0) && (
-            <div className="card-block">
-              <div className="card-head">
-                <h3>Sponsors and local partners {sample && <span className="badge badge-sample small">Recorded</span>}</h3>
-                <p className="caption">Brands and nearby places this crowd likes, per Qloo. A starting list for sponsorship and pre-show partners.</p>
-              </div>
-              <div className="two-col">
-                <div>
-                  <h4 className="mini-h">Brands to pitch</h4>
-                  <ol className="list">
-                    {ws.brands.map((b) => (
-                      <li key={b.entityId}>
-                        <span>
-                          <strong>{b.name}</strong> <small>{b.category}</small>
-                        </span>
-                        <span className="score" title="Qloo affinity with this crowd, 0-100">
-                          {pct(b.affinity)}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
+              {activeTab === "sponsors" && (
+                <div className="two-col">
+                  <div>
+                    <h4 className="mini-h">Brands to pitch</h4>
+                    <ol className="list">
+                      {ws.brands.map((b) => (
+                        <li key={b.entityId}>
+                          <span>
+                            <strong>{b.name}</strong> <small>{b.category}</small>
+                          </span>
+                          <span className="score" title="Qloo affinity with this crowd, 0-100">
+                            {pct(b.affinity)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <div>
+                    <h4 className="mini-h">Local partner spots</h4>
+                    <ol className="list">
+                      {ws.places.map((p) => (
+                        <li key={p.entityId}>
+                          <span>
+                            <strong>{p.name}</strong> <small>{p.category}</small>
+                          </span>
+                          <span className="score" title="Qloo affinity with this crowd, 0-100">
+                            {pct(p.affinity)}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <p className="fineprint">Numbers are Qloo taste-match scores (0-100) with this crowd.</p>
                 </div>
-                <div>
-                  <h4 className="mini-h">Local partner spots</h4>
-                  <ol className="list">
-                    {ws.places.map((p) => (
-                      <li key={p.entityId}>
-                        <span>
-                          <strong>{p.name}</strong> <small>{p.category}</small>
-                        </span>
-                        <span className="score" title="Qloo affinity with this crowd, 0-100">
-                          {pct(p.affinity)}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-              <p className="fineprint">Numbers are Qloo taste-match scores (0-100) with this crowd.</p>
+              )}
             </div>
-          )}
-
-          {ws?.pitch && (
-            <article className="card-block pitch" aria-labelledby="pitch-h">
-              <div className="pitch-head">
-                <div>
-                  <h3 id="pitch-h">Booking pitch, ready to send</h3>
-                  <p className="caption">A one-pager for the artist&apos;s agent or your partners, built from the results above.</p>
-                </div>
-                <div className="pitch-actions">
-                  <button onClick={download}>Download .md</button>
-                  <button onClick={() => window.print()}>Print / PDF</button>
-                </div>
-              </div>
-              {sample && <p className="pitch-warn">Built from recorded Qloo responses ({meta.recordedOn ?? "earlier run"}), not a live call. Re-run live before sending.</p>}
-              <div className="pitch-paper">
-                <h4>{ws.pitch.headline}</h4>
-                <p>{ws.pitch.summary}</p>
-                <h5>Recommended acts</h5>
-                <ul>
-                  {ws.pitch.pickRationales.map((r) => (
-                    <li key={r.artist}>
-                      <strong>{r.artist}:</strong> {r.why}
-                    </li>
-                  ))}
-                </ul>
-                <h5>Sponsor angle</h5>
-                <p>{ws.pitch.sponsorAngle}</p>
-                <p className="provenance">
-                  Data: Qloo Insights API{sample ? `, ${recLabel.replace("Recorded from the Qloo API", "recorded")}` : ", live"}. Text:{" "}
-                  {ws.pitch.author === "llm" ? `written by ${meta.llm.label} from the Qloo results` : "deterministic template"}. Affinity scores describe
-                  correlations in taste, not predictions about individuals or ticket sales.
-                </p>
-                {ws.pitch.checkNote && <p className="provenance">{ws.pitch.checkNote}</p>}
-              </div>
-            </article>
-          )}
-        </section>
+          </section>
+        )}
       </div>
       <footer className="foot">
         Lineup Architect, built for the Qloo Agentic Hackathon. Taste data from Qloo. Map tiles &copy; OpenStreetMap contributors.
