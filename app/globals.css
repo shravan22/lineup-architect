@@ -341,11 +341,32 @@ strong { color: var(--ink); }
 }
 
 /* Results nav: anchors to each part of the answer, pinned while scrolling. */
-.results-nav { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; padding: 0.55rem 0; margin-bottom: 0.75rem; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 0.9rem; font-weight: 600; }
-.results-nav a { color: var(--muted); text-decoration: none; }
-.results-nav a:hover, .results-nav a:focus-visible { color: var(--ink); text-decoration: underline; }
+.results-nav { position: sticky; top: 0; z-index: 20; display: flex; gap: 1.2rem; overflow-x: auto; scrollbar-width: none; margin-bottom: 1rem; background: var(--bg); border-bottom: 1px solid var(--line); }
+.results-nav button { flex: none; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 0.7rem 0 0.55rem; font-size: 0.92rem; font-weight: 700; white-space: nowrap; }
+.results-nav button:hover { color: var(--ink); }
+.results-nav button.is-active { color: var(--ink); border-bottom-color: var(--accent); }
 #results-lineup, #results-pitch, #results-evidence, #results-agent { scroll-margin-top: 3.2rem; }
 /* Pitch stays beside the lineup on desktop. */
 @media (min-width: 1001px) { .answer.has-pitch .pitch { position: sticky; top: 3.2rem; } }
 .skipped-note { font-size: 0.84rem; color: var(--muted); margin: 0.6rem 0 0; }
 .workspace > .agent { margin-top: 1rem; }
+
+/* Compare all acts + swap. */
+.compare { margin-top: 1rem; }
+.compare-sub, .swap-hint { font-size: 0.86rem; margin: 0 0 0.6rem; }
+.compare.is-swapping { border-color: var(--accent); }
+.table-wrap { overflow-x: auto; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.compare-table th, .compare-table td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.compare-table thead th { color: var(--muted); font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.compare-table tbody th { font-weight: 700; }
+.compare-table tr.on-bill { background: var(--panel-2); }
+.compare-table tr.on-bill th { color: var(--accent); }
+.swap-in, .swap-select { border: 1px solid var(--line-2); background: var(--panel-2); color: var(--ink); border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.8rem; font-weight: 600; }
+.swap-in:hover, .swap-select:hover { border-color: var(--accent); }
+.swap-btn { display: inline-block; margin-top: 0.4rem; font-size: 0.8rem; }
+.pitch-stale { font-size: 0.84rem; color: var(--amber); background: var(--amber-bg); border-radius: 8px; padding: 0.5rem 0.7rem; margin: 0 0 0.6rem; }
+.pitch-actions button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.run.run-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line-2); font-weight: 700; padding: 0.6rem 1.1rem; font-size: 0.92rem; }
+.run.run-secondary:hover:not(:disabled) { border-color: var(--accent); }
+#results-compare { scroll-margin-top: 3.2rem; }

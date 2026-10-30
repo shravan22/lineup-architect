@@ -63,6 +63,9 @@ const EMPTY_FORM: CustomVenueRequest & { headliners: string[] } = {
 };
 
 type Tab = "map" | "audience" | "sponsors";
+type Section = "bill" | "compare" | "evidence" | "agent";
+
+const SLOTS = ["Headliner", "Support 1", "Support 2"];
 
 /** Planner name without model IDs or failure wording; the full text stays in the tooltip and the log. */
 function plannerShort(llm: { provider: string; label: string; note?: string }): string {
@@ -85,6 +88,11 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const [logOpen, setLogOpen] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(true);
   const [tab, setTab] = useState<Tab>("map");
+  // The buyer's edits to the bill: entity ids for headliner, support 1, support 2 (null = the agent's bill).
+  const [bill, setBill] = useState<string[] | null>(null);
+  const [swapSlot, setSwapSlot] = useState<number | null>(null);
+  // Which results view is open once a run is done (one at a time instead of one long page).
+  const [section, setSection] = useState<Section>("bill");
   const abortRef = useRef<AbortController | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -173,6 +181,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     setLogOpen(true);
     setPickerOpen(false);
     setTab("map");
+    setBill(null);
+    setSwapSlot(null);
+    setSection("bill");
     setRunState("running");
     requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
     try {
@@ -242,10 +253,43 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     const last = [...mine].reverse().find((s) => s.status !== "running" && s.detail);
     return { ...row, state, detail: last?.detail, unavailable: mine.some((s) => s.status === "unavailable") };
   });
-  const headliner = ws?.picks[0];
-  const support = ws?.picks.slice(1, 3) ?? [];
-  const others = ws?.picks.slice(3) ?? [];
-  const skipped = ws && headliner ? skippedAbove(ws, [headliner, ...support]) : [];
+  const agentBill = ws?.picks.slice(0, 3).map((p) => p.entityId) ?? [];
+  const view: Workspace | null =
+    ws && bill
+      ? { ...ws, picks: [...bill.map((id) => ws.picks.find((p) => p.entityId === id)!), ...ws.picks.filter((p) => !bill.includes(p.entityId))] }
+      : ws;
+  const headliner = view?.picks[0];
+  const support = view?.picks.slice(1, 3) ?? [];
+  const billIds = view?.picks.slice(0, 3).map((p) => p.entityId) ?? [];
+  const byRank = ws ? [...ws.picks].sort((a, b) => b.affinity - a.affinity) : [];
+  // Swapping only once the run is done, so streamed workspace updates can't race the buyer's edits.
+  const canSwap = runState === "done" && !!ws && ws.picks.length > 3;
+
+  /** Put an act in a slot; an act already on the bill trades places with the one it replaces. */
+  const swap = (slot: number, id: string) => {
+    const next = [...billIds];
+    const from = next.indexOf(id);
+    if (from >= 0) next[from] = next[slot];
+    next[slot] = id;
+    setBill(next.every((x, i) => x === agentBill[i]) ? null : next);
+    setSwapSlot(null);
+    open("bill");
+  };
+  const startSwap = (slot: number) => {
+    setSwapSlot(slot);
+    open("compare");
+  };
+  /** Switch results view; bring the tab bar back into view if the page was scrolled past it. */
+  const open = (next: Section, evidenceTab?: Tab) => {
+    if (evidenceTab) setTab(evidenceTab);
+    setSection(next);
+    const top = resultsRef.current?.getBoundingClientRect().top ?? 0;
+    if (top < 0) requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ block: "start" }));
+  };
+  const done = runState === "done";
+  // While the agent runs, everything streams in one column; once done, one view at a time.
+  const shows = (sec: Section) => !done || section === sec;
+  const skipped = view && headliner ? skippedAbove(view, [headliner, ...support]) : [];
   const tier = ws ? roomTier(ws.venue.capacity) : undefined;
   const fitCount = ws?.picks.filter((p) => p.drawFit === "fits").length ?? 0;
   const planner = plannerLabel(meta.llm);
@@ -292,7 +336,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   );
 
   const runButton = (
-    <button className="run" onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
+    <button className={`run ${ws && runState !== "running" ? "run-secondary" : ""}`} onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
       {runState === "running" && <span className="spinner spinner-dark" aria-hidden="true" />}
       {runLabel}
       {runState !== "running" && <span aria-hidden="true"> →</span>}
@@ -611,25 +655,30 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         {!needsLive && !ws?.picks.length && runState === "done" && <p className="empty">The agent finished without candidates. Check the full log for errors.</p>}
 
         {ws && headliner && runState === "done" && (
-          <nav className="results-nav" aria-label="Results">
-            <a href="#results-lineup">Lineup</a>
-            {ws.pitch && <a href="#results-pitch">Pitch</a>}
-            {tabs.map((t) => (
-              <a key={t.id} href="#results-evidence" onClick={() => setTab(t.id)}>
-                {t.label}
-              </a>
-            ))}
-            <a href="#results-agent">How the agent worked</a>
+          <nav className="results-nav" role="tablist" aria-label="Results">
+            {[
+              { sec: "bill" as Section, label: ws.pitch ? "Lineup & pitch" : "Lineup" },
+              ...(canSwap ? [{ sec: "compare" as Section, label: `Compare ${ws.picks.length} acts` }] : []),
+              ...tabs.map((t) => ({ sec: "evidence" as Section, tab: t.id, label: t.label })),
+              { sec: "agent" as Section, label: "How the agent worked" },
+            ].map((it) => {
+              const active = section === it.sec && (!("tab" in it) || it.tab === activeTab);
+              return (
+                <button key={it.label} role="tab" aria-selected={active} className={active ? "is-active" : undefined} onClick={() => open(it.sec, "tab" in it ? it.tab : undefined)}>
+                  {it.label}
+                </button>
+              );
+            })}
           </nav>
         )}
 
-        {ws && headliner && (
+        {ws && headliner && shows("bill") && (
           <div className={`answer ${ws.pitch ? "has-pitch" : ""}`}>
             <section className="card-block lineup" id="results-lineup" aria-labelledby="lineup-h">
               <h2 id="lineup-h" className="sec-h">
                 Recommended lineup
               </h2>
-              {verdictLine(ws) && <p className="verdict-line">{verdictLine(ws)}</p>}
+              {view && verdictLine(view) && <p className="verdict-line">{verdictLine(view)}</p>}
               {ws.band && tier && (
                 <p
                   className="room-line"
@@ -645,7 +694,12 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 <h3 className="act-name">{headliner.name}</h3>
                 <ActMeta p={headliner} all={ws.picks} />
                 {headliner.shortDescription && <p className="act-desc">{headliner.shortDescription}</p>}
-                <Why p={headliner} open />
+                <Why p={headliner} range={ws.band ? bandLabel(ws.band.target) : undefined} open />
+                {canSwap && (
+                  <button className="linkish swap-btn" onClick={() => startSwap(0)}>
+                    Swap this act
+                  </button>
+                )}
               </article>
 
               {support.length > 0 && (
@@ -656,7 +710,12 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                       <h3 className="act-name small">{p.name}</h3>
                       {supportReason(p) && <p className="support-reason">{supportReason(p)}</p>}
                       <ActMeta p={p} all={ws.picks} />
-                      <Why p={p} />
+                      <Why p={p} range={ws.band ? bandLabel(ws.band.target) : undefined} />
+                      {canSwap && (
+                        <button className="linkish swap-btn" onClick={() => startSwap(i + 1)}>
+                          Swap this act
+                        </button>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -676,7 +735,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
               <details className="more">
                 <summary>
-                  All {ws.picks.length} acts compared ({fitCount} the right size), your room&apos;s sound, how to read this
+                  Your room&apos;s sound and how to read the scores
                 </summary>
                 {ws.unavailable.includes("taste_profile") && (
                   <p className="unavail-note" role="note">
@@ -693,24 +752,6 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                       </span>
                     ))}
                   </p>
-                )}
-                {others.length > 0 && (
-                  <>
-                    <h4 className="mini-h">Also considered</h4>
-                    <ol className="others-list" start={4}>
-                      {others.map((p) => (
-                        <li key={p.entityId}>
-                          <span className="others-name">{p.name}</span>
-                          <span className={`verdict verdict-${p.drawFit ?? "unknown"}`} title={DRAW_FIT_TEXT[p.drawFit ?? "unknown"].long}>
-                            {VERDICT[p.drawFit ?? "unknown"]}
-                          </span>
-                          <span className="others-score" title={`Qloo affinity ${pct(p.affinity)}/100, popularity ${pct(p.popularity)}/100`}>
-                            #{tasteRank(p, ws.picks)} taste match
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  </>
                 )}
                 <h4 className="mini-h">How to read this</h4>
                 <dl className="glossary">
@@ -736,10 +777,21 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                     Booking pitch
                   </h2>
                   <div className="pitch-actions">
-                    <button onClick={download}>Download .md</button>
+                    <button className="primary" onClick={download}>
+                      Download pitch (.md)
+                    </button>
                     <button onClick={() => window.print()}>Print / PDF</button>
                   </div>
                 </div>
+                {bill && (
+                  <p className="pitch-stale" role="note">
+                    You changed the bill. This pitch, the map and the audience cover the agent&apos;s picks (
+                    {agentBill.map((id) => ws.picks.find((p) => p.entityId === id)?.name).join(", ")}).{" "}
+                    <button className="linkish" onClick={() => setBill(null)}>
+                      Restore the agent&apos;s bill
+                    </button>
+                  </p>
+                )}
                 <div className="pitch-paper">
                   <h4>{ws.pitch.headline}</h4>
                   <p>{ws.pitch.summary}</p>
@@ -766,31 +818,111 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           </div>
         )}
 
-        {ws && activeTab && (
-          <section className="card-block evidence" id="results-evidence" aria-label="Evidence behind the lineup">
-            <div className="tabs" role="tablist" aria-label="Evidence">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  role="tab"
-                  id={`tab-${t.id}`}
-                  aria-selected={activeTab === t.id}
-                  aria-controls={`panel-${t.id}`}
-                  tabIndex={activeTab === t.id ? 0 : -1}
-                  className={`tab ${activeTab === t.id ? "is-active" : ""}`}
-                  onClick={() => setTab(t.id)}
-                  onKeyDown={(e) => {
-                    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-                    const i = tabs.findIndex((x) => x.id === activeTab);
-                    const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-                    setTab(next.id);
-                    document.getElementById(`tab-${next.id}`)?.focus();
-                  }}
-                >
-                  {t.label}
+        {ws && headliner && canSwap && section === "compare" && (
+          <section className={`card-block compare ${swapSlot !== null ? "is-swapping" : ""}`} id="results-compare" aria-labelledby="compare-h">
+            <h2 id="compare-h" className="sec-h">
+              Compare all {ws.picks.length} acts
+            </h2>
+            {swapSlot !== null ? (
+              <p className="swap-hint" role="status">
+                Pick the act to put in as <strong>{SLOTS[swapSlot]}</strong>.{" "}
+                <button className="linkish" onClick={() => setSwapSlot(null)}>
+                  Cancel
                 </button>
-              ))}
+              </p>
+            ) : (
+              <p className="faint compare-sub">Sorted by taste match. If an act passes on the offer, swap in the next one.</p>
+            )}
+            <div className="table-wrap">
+              <table className="compare-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Act</th>
+                    <th scope="col">Taste match</th>
+                    <th scope="col">Size for {ws.venue.capacity} cap</th>
+                    <th scope="col">Pulled in most by</th>
+                    <th scope="col">Bill</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byRank.map((p) => {
+                    const slot = billIds.indexOf(p.entityId);
+                    const fit = p.drawFit ?? "unknown";
+                    return (
+                      <tr key={p.entityId} className={slot >= 0 ? "on-bill" : undefined}>
+                        <th scope="row">{p.name}</th>
+                        <td title={`Qloo affinity ${pct(p.affinity)}/100`}>
+                          #{tasteRank(p, ws.picks)} <span className="faint">· {pct(p.affinity)}</span>
+                        </td>
+                        <td>
+                          <span className={`verdict verdict-${fit}`} title={`Qloo popularity ${pct(p.popularity)}/100. ${DRAW_FIT_TEXT[fit].long}`}>
+                            {VERDICT[fit]}
+                          </span>
+                        </td>
+                        <td>{p.drivenBy?.[0] ? `${p.drivenBy[0].name} fans (${Math.round(p.drivenBy[0].score * 100)}%)` : <span className="faint">-</span>}</td>
+                        <td className="bill-cell">
+                          {swapSlot !== null ? (
+                            slot === swapSlot ? (
+                              <span className="faint">{SLOTS[slot]}</span>
+                            ) : (
+                              <button className="swap-in" onClick={() => swap(swapSlot, p.entityId)}>
+                                Put in as {SLOTS[swapSlot]}
+                              </button>
+                            )
+                          ) : slot >= 0 ? (
+                            <strong>{SLOTS[slot]}</strong>
+                          ) : (
+                            <select
+                              className="swap-select"
+                              aria-label={`Swap ${p.name} in`}
+                              value=""
+                              onChange={(e) => e.target.value !== "" && swap(Number(e.target.value), p.entityId)}
+                            >
+                              <option value="">Swap in as...</option>
+                              {SLOTS.map((label, i) => (
+                                <option key={label} value={i}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
+          </section>
+        )}
+
+        {ws && activeTab && shows("evidence") && (
+          <section className="card-block evidence" id="results-evidence" aria-label="Evidence behind the lineup">
+            {!done && (
+              <div className="tabs" role="tablist" aria-label="Evidence">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    id={`tab-${t.id}`}
+                    aria-selected={activeTab === t.id}
+                    aria-controls={`panel-${t.id}`}
+                    tabIndex={activeTab === t.id ? 0 : -1}
+                    className={`tab ${activeTab === t.id ? "is-active" : ""}`}
+                    onClick={() => setTab(t.id)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                      const i = tabs.findIndex((x) => x.id === activeTab);
+                      const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+                      setTab(next.id);
+                      document.getElementById(`tab-${next.id}`)?.focus();
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`} className="tabpanel">
               {activeTab === "map" && (
@@ -898,7 +1030,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
           </section>
         )}
 
-        {runState === "done" && agentSection}
+        {done && section === "agent" && agentSection}
       </div>
       <footer className="foot">
         Lineup Architect, built for the Qloo Agentic Hackathon. Taste data from Qloo. Map tiles &copy; OpenStreetMap contributors.
@@ -915,7 +1047,7 @@ function ActMeta({ p, all }: { p: ArtistPick; all: ArtistPick[] }) {
       <span className="match" title={`Taste match: Qloo affinity ${pct(p.affinity)}/100, how strongly fans of your past headliners like this act`}>
         <span className="match-word">{tasteWord(p.affinity)}</span>
         <span className="match-num">
-          #{tasteRank(p, all)} of {all.length}
+          {pct(p.affinity)}/100 · #{tasteRank(p, all)} of {all.length}
         </span>
       </span>
       <span
@@ -928,9 +1060,10 @@ function ActMeta({ p, all }: { p: ArtistPick; all: ArtistPick[] }) {
   );
 }
 
-function Why({ p, open }: { p: ArtistPick; open?: boolean }) {
+function Why({ p, open, range }: { p: ArtistPick; open?: boolean; range?: string }) {
   const hasDrivers = !!p.drivenBy && p.drivenBy.length > 0;
-  if (!hasDrivers && p.sharedTags.length === 0) return null;
+  const size = range && p.popularity !== undefined ? `Size: Qloo popularity ${pct(p.popularity)}; acts this room books sit at ${range}.` : undefined;
+  if (!hasDrivers && p.sharedTags.length === 0 && !size) return null;
   return (
     <details className="why" open={open}>
       <summary>Why this act?</summary>
@@ -951,6 +1084,7 @@ function Why({ p, open }: { p: ArtistPick; open?: boolean }) {
         </div>
       )}
       {p.sharedTags.length > 0 && <div className="card-tags">Shares your room&apos;s sound: {p.sharedTags.join(", ")}</div>}
+      {size && <div className="card-tags">{size}</div>}
     </details>
   );
 }

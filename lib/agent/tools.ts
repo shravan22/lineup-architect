@@ -767,6 +767,8 @@ export function tidyPitch(p: Pitch, ws: Workspace): Pick<Pitch, "headline" | "su
       /^The\b/.test(m) ? "A top taste match" : "a top taste match",
     );
     return out
+      .replace(/\s*\b[a-z]+_[a-z_]+\b(?:\s+score)?/g, "")
+      .replace(/\s+\)/g, ")")
       .replace(/\s*\((?:affinity|popularity)\)/gi, "")
       .replace(/\b(?:at|with) (?:affinity|popularity),\s*(\w)/gi, (_m, c: string) => c.toUpperCase())
       .replace(/ {2,}/g, " ");
