@@ -761,7 +761,15 @@ export function tidyPitch(p: Pitch, ws: Workspace): Pick<Pitch, "headline" | "su
     let out = s;
     for (const n of names) out = out.replace(new RegExp(`(?<![\\w])${escapeRe(n)}(?![\\w])`, "gi"), n);
     if (ws.venue.custom) out = out.replace(/\b(near|around|close to|by|next to) (?:the|your) venue\b/gi, "$1 the city centre");
-    return scrubNumbers(out, ws.seeds.map((x) => x.name));
+    out = scrubNumbers(out, ws.seeds.map((x) => x.name));
+    // Ranks live on the cards only, so the pitch can't contradict them ("the #2 match" vs a "#3" card).
+    out = out.replace(/\b(the\s+)?#\d+\s+(?:taste\s+)?match(?:\s+of\s+\d+)?(?:\s*\((?:affinity|popularity)\))?(?:\s+with\s+(?:high\s+|strong\s+)?affinity)?/gi, (m) =>
+      /^The\b/.test(m) ? "A top taste match" : "a top taste match",
+    );
+    return out
+      .replace(/\s*\((?:affinity|popularity)\)/gi, "")
+      .replace(/\b(?:at|with) (?:affinity|popularity),\s*(\w)/gi, (_m, c: string) => c.toUpperCase())
+      .replace(/ {2,}/g, " ");
   };
   return {
     headline: fix(p.headline),

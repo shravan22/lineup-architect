@@ -6,7 +6,7 @@ import { bandLabel, capacityBand, DRAW_FIT_TEXT } from "@/lib/band";
 import { CITIES, OTHER_CITY } from "@/lib/cities";
 import type { AgentEvent, ArtistPick, CustomVenueRequest, DataSource, StatusInfo, VenueInput, Workspace } from "@/lib/types";
 import { pitchMarkdown } from "@/lib/pitch";
-import { concentration, plannerLabel, roomTier, supportReason, tasteRank, tasteWord, VERDICT, verdictLine } from "@/lib/ui";
+import { concentration, plannerLabel, roomTier, skippedAbove, supportReason, tasteRank, tasteWord, VERDICT, verdictLine } from "@/lib/ui";
 
 const AffinityMap = dynamic(() => import("./AffinityMap"), {
   ssr: false,
@@ -66,8 +66,8 @@ type Tab = "map" | "audience" | "sponsors";
 
 /** Planner name without model IDs or failure wording; the full text stays in the tooltip and the log. */
 function plannerShort(llm: { provider: string; label: string; note?: string }): string {
-  if (llm.provider === "scripted") return /\((?:.* )?(failed|quota reached|too slow|stopped early)\)$/.test(llm.label) ? "rule-based (fallback)" : "rule-based";
-  return `${llm.label.replace(/\s*\(.*\)\s*$/, "")}${llm.note ? " (fallback)" : ""}`;
+  if (llm.provider === "scripted") return "rule-based";
+  return llm.label.replace(/\s*\(.*\)\s*$/, "");
 }
 
 export default function LineupArchitect({ status, venues }: { status: StatusInfo; venues: VenueInput[] }) {
@@ -245,6 +245,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const headliner = ws?.picks[0];
   const support = ws?.picks.slice(1, 3) ?? [];
   const others = ws?.picks.slice(3) ?? [];
+  const skipped = ws && headliner ? skippedAbove(ws, [headliner, ...support]) : [];
   const tier = ws ? roomTier(ws.venue.capacity) : undefined;
   const fitCount = ws?.picks.filter((p) => p.drawFit === "fits").length ?? 0;
   const planner = plannerLabel(meta.llm);
@@ -298,6 +299,98 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     </button>
   );
 
+  const agentSection = (
+    <section className="agent" id="results-agent" aria-labelledby="agent-h" aria-live="polite">
+      <div className="agent-stats">
+        <h2 id="agent-h" className="mini-h">
+          {runState === "done" ? "How the agent worked" : "Agent run"}
+        </h2>
+        <span className="stat">
+          <strong>{runState === "running" ? `${toolsDone}/${tools.length || "-"}` : toolsDone}</strong> Qloo calls
+        </span>
+        <span className="stat">
+          <strong>{decisions.length}</strong> judgement call{decisions.length === 1 ? "" : "s"}
+        </span>
+        {elapsed !== null && !needsLive && (
+          <span className="stat">
+            <strong>{(elapsed / 1000).toFixed(1)}</strong> s{partial ? " (time budget reached)" : ""}
+          </span>
+        )}
+        <span className="stat stat-planner" title={planner.title}>
+          planner: {plannerText}
+        </span>
+      </div>
+      {runState === "running" && (
+        <p className="agent-now">
+          <span className="spinner" aria-hidden="true" /> {current ? `Now: ${current.label}` : "Starting the agent..."}
+        </p>
+      )}
+      {!needsLive &&
+        (runState === "done" ? (
+          <details className="log">
+            <summary>Show the {planRows.length} steps</summary>
+            {planList(true)}
+          </details>
+        ) : (
+          planList(true)
+        ))}
+      {decisions.length > 0 && (
+        <ul className="agent-decisions">
+          {decisions.slice(0, 3).map((d) => (
+            <li key={d.id} title={d.detail}>
+              {d.label}
+            </li>
+          ))}
+          {decisions.length > 3 && <li className="more-note">+{decisions.length - 3} more in the full log</li>}
+        </ul>
+      )}
+
+      {steps.length > 0 && (
+        <details className="log" open={logOpen} onToggle={(e) => setLogOpen(e.currentTarget.open)}>
+          <summary>{logOpen ? "Hide full log" : `Show full log (${steps.length} steps)`}</summary>
+          <ol className="trace">
+            {steps.map((s) => (
+              <li key={s.id} className={`step step-${s.kind} step-${s.status}`}>
+                {s.kind === "tool" ? (
+                  <>
+                    <span className="step-icon" aria-hidden="true">
+                      {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : s.status === "unavailable" ? "–" : "!"}
+                    </span>
+                    <div className="step-main">
+                      <div className="step-label">
+                        {s.label}
+                        {s.status === "unavailable" && <span className="src src-unavailable">unavailable on hackathon key</span>}
+                        {s.sources?.map((src, i) => (
+                          <span key={i} className={`src src-${src}`}>
+                            {src === "fixture" ? "recorded" : src}
+                          </span>
+                        ))}
+                        {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
+                      </div>
+                      {s.detail && <div className="step-detail">{s.detail}</div>}
+                      {s.endpoints && s.endpoints.length > 0 && <div className="step-endpoint">{s.endpoints.join(", ")}</div>}
+                    </div>
+                  </>
+                ) : s.kind === "decision" ? (
+                  <div className="decision">
+                    <span className="tag tag-decision">Judgement call</span>
+                    <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the rule-based planner"}</span>
+                    <div className="decision-title">{s.label}</div>
+                    {s.detail && <div className="decision-detail">{s.detail}</div>}
+                  </div>
+                ) : (
+                  <p className="thought">
+                    <span className="who">{s.kind === "notice" ? "Notice" : s.by === "llm" ? "Agent plan" : "Planner"}</span> {s.label}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </section>
+  );
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -326,13 +419,15 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       </header>
 
       <section className="setup" aria-labelledby="hero-h">
-        <h1 id="hero-h">
+        <h1 id="hero-h" className={ws ? "sr-only" : undefined}>
           Book the acts <span className="hl">your neighbourhood</span> already loves.
         </h1>
-        <p className="lede">
-          For talent buyers at 200-2,000-cap rooms: an agent that reads <strong>Qloo taste data</strong>, books acts sized to your room and writes the
-          pitch.
-        </p>
+        {!ws && (
+          <p className="lede">
+            For talent buyers at 200-2,000-cap rooms: an agent that reads <strong>Qloo taste data</strong>, books acts sized to your room and writes the
+            pitch.
+          </p>
+        )}
         {sample && (
           <p className="banner" role="note" title="The scores are Qloo's, just not fetched right now (trimmed to the fields the app reads).">
             <strong>Recorded mode:</strong> the sample venues replay real Qloo API responses{meta.recordedOn ? ` from ${meta.recordedOn}` : ""}. Your own
@@ -376,7 +471,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
             <div className="selected-bar">
               {!isCustom && venue && (
                 <p className="selected-info" title={venue.blurb}>
-                  {roomTier(venue.capacity).name} · past headliners (the taste signal): <strong>{venue.headliners.join(", ")}</strong>
+                  {roomTier(venue.capacity).name} · acts that did well here (the taste signal): <strong>{venue.headliners.join(", ")}</strong>
                 </p>
               )}
 
@@ -475,89 +570,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       </section>
 
       <div className="workspace" ref={resultsRef}>
-        {runState !== "idle" && (
-          <section className="agent" aria-labelledby="agent-h" aria-live="polite">
-            <div className="agent-stats">
-              <h2 id="agent-h" className="mini-h">
-                Agent run
-              </h2>
-              <span className="stat">
-                <strong>{runState === "running" ? `${toolsDone}/${tools.length || "-"}` : toolsDone}</strong> Qloo calls
-              </span>
-              <span className="stat">
-                <strong>{decisions.length}</strong> judgement call{decisions.length === 1 ? "" : "s"}
-              </span>
-              {elapsed !== null && !needsLive && (
-                <span className="stat">
-                  <strong>{(elapsed / 1000).toFixed(1)}</strong> s{partial ? " (time budget reached)" : ""}
-                </span>
-              )}
-              <span className="stat stat-planner" title={planner.title}>
-                planner: {plannerText}
-              </span>
-            </div>
-            {runState === "running" && (
-              <p className="agent-now">
-                <span className="spinner" aria-hidden="true" /> {current ? `Now: ${current.label}` : "Starting the agent..."}
-              </p>
-            )}
-            {!needsLive && planList(true)}
-            {decisions.length > 0 && (
-              <ul className="agent-decisions">
-                {decisions.slice(0, 3).map((d) => (
-                  <li key={d.id} title={d.detail}>
-                    {d.label}
-                  </li>
-                ))}
-                {decisions.length > 3 && <li className="more-note">+{decisions.length - 3} more in the full log</li>}
-              </ul>
-            )}
-
-            {steps.length > 0 && (
-              <details className="log" open={logOpen} onToggle={(e) => setLogOpen(e.currentTarget.open)}>
-                <summary>{logOpen ? "Hide full log" : `Show full log (${steps.length} steps)`}</summary>
-                <ol className="trace">
-                  {steps.map((s) => (
-                    <li key={s.id} className={`step step-${s.kind} step-${s.status}`}>
-                      {s.kind === "tool" ? (
-                        <>
-                          <span className="step-icon" aria-hidden="true">
-                            {s.status === "running" ? <span className="spinner" /> : s.status === "ok" ? "✓" : s.status === "unavailable" ? "–" : "!"}
-                          </span>
-                          <div className="step-main">
-                            <div className="step-label">
-                              {s.label}
-                              {s.status === "unavailable" && <span className="src src-unavailable">unavailable on hackathon key</span>}
-                              {s.sources?.map((src, i) => (
-                                <span key={i} className={`src src-${src}`}>
-                                  {src === "fixture" ? "recorded" : src}
-                                </span>
-                              ))}
-                              {s.ms !== undefined && <span className="ms">{s.ms} ms</span>}
-                            </div>
-                            {s.detail && <div className="step-detail">{s.detail}</div>}
-                            {s.endpoints && s.endpoints.length > 0 && <div className="step-endpoint">{s.endpoints.join(", ")}</div>}
-                          </div>
-                        </>
-                      ) : s.kind === "decision" ? (
-                        <div className="decision">
-                          <span className="tag tag-decision">Judgement call</span>
-                          <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the rule-based planner"}</span>
-                          <div className="decision-title">{s.label}</div>
-                          {s.detail && <div className="decision-detail">{s.detail}</div>}
-                        </div>
-                      ) : (
-                        <p className="thought">
-                          <span className="who">{s.kind === "notice" ? "Notice" : s.by === "llm" ? "Agent plan" : "Planner"}</span> {s.label}
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            )}
-          </section>
-        )}
+        {runState !== "idle" && runState !== "done" && agentSection}
 
         {error && (
           <p className="error" role="alert">
@@ -597,9 +610,22 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         )}
         {!needsLive && !ws?.picks.length && runState === "done" && <p className="empty">The agent finished without candidates. Check the full log for errors.</p>}
 
+        {ws && headliner && runState === "done" && (
+          <nav className="results-nav" aria-label="Results">
+            <a href="#results-lineup">Lineup</a>
+            {ws.pitch && <a href="#results-pitch">Pitch</a>}
+            {tabs.map((t) => (
+              <a key={t.id} href="#results-evidence" onClick={() => setTab(t.id)}>
+                {t.label}
+              </a>
+            ))}
+            <a href="#results-agent">How the agent worked</a>
+          </nav>
+        )}
+
         {ws && headliner && (
           <div className={`answer ${ws.pitch ? "has-pitch" : ""}`}>
-            <section className="card-block lineup" aria-labelledby="lineup-h">
+            <section className="card-block lineup" id="results-lineup" aria-labelledby="lineup-h">
               <h2 id="lineup-h" className="sec-h">
                 Recommended lineup
               </h2>
@@ -628,7 +654,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                     <article key={p.entityId} className="support-card" aria-label={`Support pick ${i + 1}: ${p.name}`}>
                       <span className="slot">Support {i + 1}</span>
                       <h3 className="act-name small">{p.name}</h3>
-                      <p className="support-reason">{supportReason(p, ws.picks)}</p>
+                      {supportReason(p) && <p className="support-reason">{supportReason(p)}</p>}
                       <ActMeta p={p} all={ws.picks} />
                       <Why p={p} />
                     </article>
@@ -636,9 +662,21 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 </div>
               )}
 
+              {skipped.length > 0 && (
+                <p className="skipped-note">
+                  Not on the bill:{" "}
+                  {skipped.map((x, i) => (
+                    <span key={x.name}>
+                      {i > 0 && "; "}#{x.rank} {x.name} ({x.why})
+                    </span>
+                  ))}
+                  .
+                </p>
+              )}
+
               <details className="more">
                 <summary>
-                  Details: all {ws.picks.length} acts considered ({fitCount} the right size), your room&apos;s sound, how to read this
+                  All {ws.picks.length} acts compared ({fitCount} the right size), your room&apos;s sound, how to read this
                 </summary>
                 {ws.unavailable.includes("taste_profile") && (
                   <p className="unavail-note" role="note">
@@ -692,7 +730,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
             </section>
 
             {ws.pitch && (
-              <article className="card-block pitch" aria-labelledby="pitch-h">
+              <article className="card-block pitch" id="results-pitch" aria-labelledby="pitch-h">
                 <div className="pitch-head">
                   <h2 id="pitch-h" className="sec-h">
                     Booking pitch
@@ -718,8 +756,8 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <p className="provenance">
                     {sample && <strong>Built from recorded Qloo responses ({meta.recordedOn ?? "earlier run"}): re-run live before sending. </strong>}
                     Data: Qloo Insights API{sample ? `, ${recLabel.replace("Recorded from the Qloo API", "recorded")}` : ", live"}. Text:{" "}
-                    {ws.pitch.author === "llm" ? `written by ${meta.llm.label} from the Qloo results` : "deterministic template"}. Affinity scores describe
-                    correlations in taste, not predictions about individuals or ticket sales.
+                    {ws.pitch.author === "llm" ? `drafted by AI (${plannerText}) from the Qloo results, check before sending` : "deterministic template"}. Taste
+                    scores describe correlations in taste, not predictions about individuals or ticket sales.
                   </p>
                   {ws.pitch.checkNote && <p className="provenance">{ws.pitch.checkNote}</p>}
                 </div>
@@ -729,7 +767,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
         )}
 
         {ws && activeTab && (
-          <section className="card-block evidence" aria-label="Evidence behind the lineup">
+          <section className="card-block evidence" id="results-evidence" aria-label="Evidence behind the lineup">
             <div className="tabs" role="tablist" aria-label="Evidence">
               {tabs.map((t) => (
                 <button
@@ -760,7 +798,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <p className="stat-line">
                     {conc && (
                       <>
-                        <strong>{conc.verdict}.</strong> {conc.hotPct}% of the hottest areas are within {conc.km} km of{" "}
+                        <strong>{mapAction(conc.verdict)}</strong> {conc.verdict}: {conc.hotPct}% of the hottest areas are within {conc.km} km of{" "}
                         {ws.venue.custom ? "the city centre" : "the venue"}, vs {conc.allPct}% of all mapped areas.{" "}
                       </>
                     )}
@@ -859,6 +897,8 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
             </div>
           </section>
         )}
+
+        {runState === "done" && agentSection}
       </div>
       <footer className="foot">
         Lineup Architect, built for the Qloo Agentic Hackathon. Taste data from Qloo. Map tiles &copy; OpenStreetMap contributors.
@@ -931,4 +971,12 @@ function SkewRow({ label, v }: { label: string; v: number }) {
       </td>
     </tr>
   );
+}
+
+/** The map's takeaway as something to do (where to put flyers and street promo). */
+function mapAction(verdict: string): string {
+  if (verdict.startsWith("Concentrated near")) return "Focus street promo near the venue.";
+  if (verdict.startsWith("Concentrated away")) return "Promote where the taste is, not just around the venue.";
+  if (verdict.startsWith("Spread")) return "Promote city-wide.";
+  return "";
 }

@@ -57,11 +57,20 @@ export function verdictLine(ws: Workspace): string | undefined {
 }
 
 /** One visible line per support act: its top driver, else its shared sound. */
-export function supportReason(p: ArtistPick, all: ArtistPick[]): string {
-  const rank = `#${tasteRank(p, all)} taste match`;
-  if (p.drivenBy?.length) return `${rank}, pulled in mostly by ${p.drivenBy[0].name} fans`;
-  if (p.sharedTags.length) return `${rank}, shares your room's ${p.sharedTags.slice(0, 2).join(" and ").toLowerCase()} sound`;
-  return rank;
+export function supportReason(p: ArtistPick): string | undefined {
+  if (p.drivenBy?.length) return `Pulled in mostly by ${p.drivenBy[0].name} fans`;
+  if (p.sharedTags.length) return `Shares your room's ${p.sharedTags.slice(0, 2).join(" and ").toLowerCase()} sound`;
+  return undefined;
+}
+
+/** Higher taste matches left off the bill, and why ("#2 Floating Points: stretch pick"), so rank gaps on the cards make sense. */
+export function skippedAbove(ws: Workspace, bill: ArtistPick[]): { rank: number; name: string; why: string }[] {
+  const worst = Math.max(...bill.map((p) => tasteRank(p, ws.picks)));
+  const why = { fits: "kept as a backup", stretch: "bigger than the room", under: "smaller than the room", unknown: "size unknown" } as const;
+  return ws.picks
+    .filter((p) => !bill.includes(p) && tasteRank(p, ws.picks) < worst)
+    .map((p) => ({ rank: tasteRank(p, ws.picks), name: p.name, why: why[p.drawFit ?? "unknown"] }))
+    .sort((a, b) => a.rank - b.rank);
 }
 
 const HOT_KM = 2;

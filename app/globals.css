@@ -339,3 +339,13 @@ strong { color: var(--ink); }
   .pitch .sec-h { color: #000; }
   .pitch-paper { box-shadow: none; padding: 0; background: #fff; }
 }
+
+/* Results nav: anchors to each part of the answer, pinned while scrolling. */
+.results-nav { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 0.25rem 1.1rem; padding: 0.55rem 0; margin-bottom: 0.75rem; background: var(--bg); border-bottom: 1px solid var(--line); font-size: 0.9rem; font-weight: 600; }
+.results-nav a { color: var(--muted); text-decoration: none; }
+.results-nav a:hover, .results-nav a:focus-visible { color: var(--ink); text-decoration: underline; }
+#results-lineup, #results-pitch, #results-evidence, #results-agent { scroll-margin-top: 3.2rem; }
+/* Pitch stays beside the lineup on desktop. */
+@media (min-width: 1001px) { .answer.has-pitch .pitch { position: sticky; top: 3.2rem; } }
+.skipped-note { font-size: 0.84rem; color: var(--muted); margin: 0.6rem 0 0; }
+.workspace > .agent { margin-top: 1rem; }
