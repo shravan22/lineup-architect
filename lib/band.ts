@@ -70,8 +70,8 @@ const pctLabel = (x: number) => String(Math.round(x * 1000) / 10);
 export const bandLabel = (b: PopBand) => `${pctLabel(b.min)}-${pctLabel(b.max)}`;
 
 export const DRAW_FIT_TEXT: Record<DrawFit, { short: string; long: string }> = {
-  fits: { short: "In this room's tier", long: "Qloo popularity is inside the range for this capacity (a heuristic, not a ticket forecast)" },
+  fits: { short: "Right size for the room", long: "Qloo popularity is inside the range for this capacity (a heuristic, not a ticket forecast)" },
   stretch: { short: "Stretch pick", long: "More popular than this room's range: may cost more or outgrow the room" },
-  under: { short: "Below this room's tier", long: "Less popular than this room's range: may not fill the room on its own" },
-  unknown: { short: "Tier unknown", long: "Qloo returned no popularity for this act" },
+  under: { short: "Smaller than the room", long: "Less popular than this room's range: may not fill the room on its own" },
+  unknown: { short: "Size unknown", long: "Qloo returned no popularity for this act" },
 };

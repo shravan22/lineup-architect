@@ -6,15 +6,29 @@ import { bandLabel, capacityBand, DRAW_FIT_TEXT } from "@/lib/band";
 import { CITIES, OTHER_CITY } from "@/lib/cities";
 import type { AgentEvent, ArtistPick, CustomVenueRequest, DataSource, StatusInfo, VenueInput, Workspace } from "@/lib/types";
 import { pitchMarkdown } from "@/lib/pitch";
-import { concentration, plannerLabel, roomTier, tasteWord, VERDICT } from "@/lib/ui";
+import { concentration, plannerLabel, roomTier, supportReason, tasteRank, tasteWord, VERDICT, verdictLine } from "@/lib/ui";
 
 const AffinityMap = dynamic(() => import("./AffinityMap"), {
   ssr: false,
   loading: () => <div className="map map-loading">Loading map...</div>,
 });
 
+/** The agent's plan, shown before a run and ticked off live during it (one row per stage, tool names from lib/agent/tools.ts). */
+const PLAN: { tools: string[]; text: string; chip: string }[] = [
+  { tools: ["locate_city", "search_artist", "resolve_headliner"], text: "Find your past headliners on Qloo", chip: "search" },
+  { tools: ["find_genre_tags", "taste_profile"], text: "Read your room's sound from their tags", chip: "tags" },
+  { tools: ["recommend_artists"], text: "Rank acts their fans love, sized to your room", chip: "insights" },
+  { tools: ["audience_heatmap"], text: "Map where that taste lives in the city", chip: "heatmap" },
+  { tools: ["audience_demographics"], text: "Profile the crowd's age and gender lean", chip: "demographics" },
+  { tools: ["sponsor_brands", "partner_places"], text: "Shortlist sponsor brands and partner spots", chip: "brands · places" },
+  { tools: ["write_pitch"], text: "Write the booking pitch", chip: "LLM" },
+];
+
+type RowState = "pending" | "running" | "ok" | "error" | "skipped";
+
 interface Step {
   id: string;
+  name?: string;
   kind: "tool" | "thought" | "notice" | "decision";
   label: string;
   detail?: string;
@@ -99,7 +113,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
       case "tool_start":
         setSteps((s) => [
           ...s,
-          { id: e.id, kind: "tool", label: e.label, detail: Object.keys(e.args).length ? JSON.stringify(e.args) : undefined, status: "running" },
+          { id: e.id, name: e.name, kind: "tool", label: e.label, detail: Object.keys(e.args).length ? JSON.stringify(e.args) : undefined, status: "running" },
         ]);
         break;
       case "tool_end":
@@ -214,10 +228,25 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   const toolsDone = tools.filter((s) => s.status !== "running").length;
   const decisions = steps.filter((s) => s.kind === "decision");
   const current = [...tools].reverse().find((s) => s.status === "running");
+  const planRows = PLAN.map((row) => {
+    const mine = tools.filter((s) => s.name && row.tools.includes(s.name));
+    const state: RowState = mine.some((s) => s.status === "running")
+      ? "running"
+      : mine.some((s) => s.status === "ok" || s.status === "unavailable")
+        ? "ok"
+        : mine.some((s) => s.status === "error")
+          ? "error"
+          : runState === "done" || runState === "error"
+            ? "skipped"
+            : "pending";
+    const last = [...mine].reverse().find((s) => s.status !== "running" && s.detail);
+    return { ...row, state, detail: last?.detail, unavailable: mine.some((s) => s.status === "unavailable") };
+  });
   const headliner = ws?.picks[0];
   const support = ws?.picks.slice(1, 3) ?? [];
   const others = ws?.picks.slice(3) ?? [];
   const tier = ws ? roomTier(ws.venue.capacity) : undefined;
+  const fitCount = ws?.picks.filter((p) => p.drawFit === "fits").length ?? 0;
   const planner = plannerLabel(meta.llm);
   const plannerText = plannerShort(meta.llm);
 
@@ -237,16 +266,29 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
     : [];
   const activeTab = tabs.find((t) => t.id === tab)?.id ?? tabs[0]?.id;
 
-  const runLabel =
-    runState === "running"
-      ? "Agent working..."
-      : isCustom
-        ? sample
-          ? "Plan with live Qloo data"
-          : "Plan the next booking"
-        : runState === "idle"
-          ? "Plan the next booking"
-          : "Run again";
+  // One label set for presets and custom venues.
+  const runLabel = runState === "running" ? "Agent working..." : runState === "idle" ? "Plan the next booking" : "Run again";
+
+  const planList = (live: boolean) => (
+    <ol className={`plan-rows ${live ? "is-live" : ""}`}>
+      {planRows.map((r, i) => (
+        <li key={r.text} className={`plan-row row-${live ? r.state : "pending"}`}>
+          <span className="row-icon" aria-hidden="true">
+            {!live || r.state === "pending" ? i + 1 : r.state === "running" ? <span className="spinner" /> : r.state === "ok" ? "✓" : r.state === "error" ? "!" : "–"}
+          </span>
+          <span className="row-text">
+            {r.text}
+            {live && r.state === "skipped" && <span className="row-note"> (skipped by the planner)</span>}
+            {live && r.unavailable && <span className="row-note"> (unavailable on this key)</span>}
+            {live && r.detail && r.state === "ok" && <span className="row-detail">{r.detail}</span>}
+          </span>
+          <span className="endpoint-chip" title="Qloo API or model call used for this step">
+            {r.chip}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
 
   const runButton = (
     <button className="run" onClick={run} disabled={runState === "running" || (!venue && !isCustom)}>
@@ -422,6 +464,12 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
 
               {runButton}
             </div>
+            {runState === "idle" && (
+              <div className="plan-preview">
+                <h2 className="mini-h">What the agent will do</h2>
+                {planList(false)}
+              </div>
+            )}
           </>
         )}
       </section>
@@ -437,7 +485,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 <strong>{runState === "running" ? `${toolsDone}/${tools.length || "-"}` : toolsDone}</strong> Qloo calls
               </span>
               <span className="stat">
-                <strong>{decisions.length}</strong> decision{decisions.length === 1 ? "" : "s"}
+                <strong>{decisions.length}</strong> judgement call{decisions.length === 1 ? "" : "s"}
               </span>
               {elapsed !== null && !needsLive && (
                 <span className="stat">
@@ -449,17 +497,11 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               </span>
             </div>
             {runState === "running" && (
-              <>
-                <p className="agent-now">
-                  <span className="spinner" aria-hidden="true" /> {current ? `Now: ${current.label}` : "Starting the agent..."}
-                </p>
-                {tools.length > 0 && (
-                  <div className="progbar" aria-hidden="true">
-                    <span style={{ width: `${Math.round((toolsDone / Math.max(tools.length, 1)) * 100)}%` }} />
-                  </div>
-                )}
-              </>
+              <p className="agent-now">
+                <span className="spinner" aria-hidden="true" /> {current ? `Now: ${current.label}` : "Starting the agent..."}
+              </p>
             )}
+            {!needsLive && planList(true)}
             {decisions.length > 0 && (
               <ul className="agent-decisions">
                 {decisions.slice(0, 3).map((d) => (
@@ -499,7 +541,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                         </>
                       ) : s.kind === "decision" ? (
                         <div className="decision">
-                          <span className="tag tag-decision">Decision</span>
+                          <span className="tag tag-decision">Judgement call</span>
                           <span className="decision-by">{s.by === "llm" ? "by the LLM agent" : "by the rule-based planner"}</span>
                           <div className="decision-title">{s.label}</div>
                           {s.detail && <div className="decision-detail">{s.detail}</div>}
@@ -561,20 +603,21 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               <h2 id="lineup-h" className="sec-h">
                 Recommended lineup
               </h2>
+              {verdictLine(ws) && <p className="verdict-line">{verdictLine(ws)}</p>}
               {ws.band && tier && (
                 <p
                   className="room-line"
-                  title={`${ws.venue.name} holds ${ws.venue.capacity}. Qloo popularity is a 0-100 rank of how widely known an artist is; the capacity-to-range mapping is a heuristic. Last search covered ${bandLabel(ws.band.used)}. Queries: ${ws.band.history.join("; ")}`}
+                  title={`${ws.venue.name} holds ${ws.venue.capacity}. Acts sized for this room have Qloo popularity ${bandLabel(ws.band.target)} (a 0-100 rank of how widely known an act is; the capacity-to-range mapping is a heuristic). Last search covered ${bandLabel(ws.band.used)}. Queries: ${ws.band.history.join("; ")}`}
                 >
-                  {tier.name} ({ws.venue.capacity} cap) → in-tier acts have Qloo popularity <strong>{bandLabel(ws.band.target)}</strong>
-                  {ws.band.used.max > ws.band.target.max ? `; searched up to ${bandLabel(ws.band.used)} for stretch picks` : ""}
+                  Sized for a {tier.name.toLowerCase()} ({ws.venue.capacity} cap): {fitCount} of {ws.picks.length} acts the agent found are the right size
+                  {ws.band.used.max > ws.band.target.max ? ", plus a few bigger stretch picks" : ""}.
                 </p>
               )}
 
               <article className="headliner" aria-label={`Headliner pick: ${headliner.name}`}>
                 <span className="slot">Headliner</span>
                 <h3 className="act-name">{headliner.name}</h3>
-                <ActMeta p={headliner} />
+                <ActMeta p={headliner} all={ws.picks} />
                 {headliner.shortDescription && <p className="act-desc">{headliner.shortDescription}</p>}
                 <Why p={headliner} open />
               </article>
@@ -585,7 +628,8 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                     <article key={p.entityId} className="support-card" aria-label={`Support pick ${i + 1}: ${p.name}`}>
                       <span className="slot">Support {i + 1}</span>
                       <h3 className="act-name small">{p.name}</h3>
-                      <ActMeta p={p} />
+                      <p className="support-reason">{supportReason(p, ws.picks)}</p>
+                      <ActMeta p={p} all={ws.picks} />
                       <Why p={p} />
                     </article>
                   ))}
@@ -593,7 +637,9 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
               )}
 
               <details className="more">
-                <summary>Details{others.length > 0 ? `: ${others.length} more acts considered, ` : ": "}your room&apos;s sound, how to read this</summary>
+                <summary>
+                  Details: all {ws.picks.length} acts considered ({fitCount} the right size), your room&apos;s sound, how to read this
+                </summary>
                 {ws.unavailable.includes("taste_profile") && (
                   <p className="unavail-note" role="note">
                     Venue taste profile unavailable on this Qloo key (urn:tag returned 403). Acts are ranked without the shared-tag check.
@@ -621,7 +667,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                             {VERDICT[p.drawFit ?? "unknown"]}
                           </span>
                           <span className="others-score" title={`Qloo affinity ${pct(p.affinity)}/100, popularity ${pct(p.popularity)}/100`}>
-                            {tasteWord(p.affinity)}
+                            #{tasteRank(p, ws.picks)} taste match
                           </span>
                         </li>
                       ))}
@@ -635,8 +681,8 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                   <dt>Popularity and room size</dt>
                   <dd>
                     Qloo popularity is a 0-100 rank of how widely known an act is. Each room tier maps to a popularity range (a heuristic tuned on
-                    real Qloo data). “In this room&apos;s tier” means the act&apos;s popularity sits inside that range, “Stretch pick” means it is more
-                    widely known (likely pricier or a bigger room), “Below this room&apos;s tier” means less known. Popularity is a proxy for draw, not a
+                    real Qloo data). “Right size for the room” means the act&apos;s popularity sits inside that range, “Stretch pick” means it is more
+                    widely known (likely pricier or a bigger room), “Smaller than the room” means less known. Popularity is a proxy for draw, not a
                     ticket forecast.
                   </dd>
                   <dt>Driven by (Qloo explainability)</dt>
@@ -821,22 +867,22 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
   );
 }
 
-function ActMeta({ p }: { p: ArtistPick }) {
+/** Two plain labels: taste match (rank by Qloo affinity) and act size (Qloo popularity vs the room). Raw scores on hover. */
+function ActMeta({ p, all }: { p: ArtistPick; all: ArtistPick[] }) {
   const fit = p.drawFit ?? "unknown";
   return (
     <div className="act-meta">
-      <span className={`verdict verdict-${fit}`} title={DRAW_FIT_TEXT[fit].long}>
-        {VERDICT[fit]}
-      </span>
-      <span className="match" title={`Qloo affinity ${pct(p.affinity)}/100: how strongly fans of your past headliners like this act`}>
+      <span className="match" title={`Taste match: Qloo affinity ${pct(p.affinity)}/100, how strongly fans of your past headliners like this act`}>
         <span className="match-word">{tasteWord(p.affinity)}</span>
-        <span className="meter" aria-hidden="true">
-          <span style={{ width: `${pct(p.affinity)}%` }} />
+        <span className="match-num">
+          #{tasteRank(p, all)} of {all.length}
         </span>
-        <span className="match-num">{pct(p.affinity)}</span>
       </span>
-      <span className="pop" title="Qloo popularity: 0-100 rank of how widely known the act is">
-        Popularity {pct(p.popularity)}
+      <span
+        className={`verdict verdict-${fit}`}
+        title={`How big the act is: Qloo popularity ${pct(p.popularity)}/100 (how widely known). ${DRAW_FIT_TEXT[fit].long}`}
+      >
+        {VERDICT[fit]}
       </span>
     </div>
   );

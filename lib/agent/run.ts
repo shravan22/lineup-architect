@@ -241,7 +241,7 @@ async function runScripted(c: Ctx) {
       c.emit({
         type: "decision",
         by,
-        title: `Kept the ${bandLabel(ws.band.used)} search`,
+        title: `Kept the search: ${countTier(ws, "fits")} of ${ws.picks.length} acts are the right size`,
         detail: `${countTier(ws, "fits")} of ${ws.picks.length} acts are in a ${ws.venue.capacity}-cap room's tier (need at least ${MIN_FIT})${st ? `; ${st} stretch pick${st === 1 ? "" : "s"} stay on the list, ranked last, as reach options` : ""}. No re-query needed.`,
       });
     }
@@ -294,6 +294,8 @@ function systemPrompt(v: VenueInput) {
     "- Pick which acts to map and profile (default: the top 3 that fit the room).",
     "- recommend_artists returns Qloo explainability (driven_by: which past headliner drove each act, 0..1). Cite it in pick_rationales when present.",
     "- If a tool reports unavailable (HTTP 403, not enabled for this key), do not retry it; continue and finish the pitch without that section.",
+    "- Pitch style: write for a booking agent, in plain words. Spell act names exactly as the tools return them. Describe an act's genre only with Qloo tags returned for that act or the venue. Say 'the #2 taste match' or 'the right size for this room' instead of raw scores like 0.97 or 97/100.",
+    ...(v.custom ? ["- This venue has no street address: it is placed at the city centre, so say 'near the city centre', never 'near the venue'."] : []),
     "Before each batch of tool calls, say in one short sentence what you are deciding and why. Use only facts returned by tools. Treat affinity as correlation, never causation, and never make claims about individuals. Never promise outcomes such as attendance, sell-outs or revenue (no 'guarantees', 'packed', 'sure-fire'); say what the Qloo data shows. Only describe local taste as concentrated near the venue if audience_heatmap reports near_venue_lift above 1.1; otherwise say taste is spread across the city or leave it out. Never write 'strong local affinity' unless that lift is above 1.1. Call stretch acts 'stretch picks', never 'fits the room'. The pitch is checked against the data; unsupported claims are replaced by the template pitch.",
     `Venue: ${v.name}, ${v.city}, capacity ${v.capacity}. ${v.blurb}`,
     `Past headliners: ${v.headliners.join(", ")}.${v.genreHint ? ` Genre focus: ${v.genreHint}.` : ""}`,

@@ -392,7 +392,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
         forModel: JSON.stringify({ resolved: c.name, entity_id: c.entityId }),
         sources: [],
         endpoints: [],
-        decisions: [{ title: `Disambiguated "${choice.query}"`, detail: reason }],
+        decisions: [{ title: `"${choice.query}" = ${c.name}${c.description ? `, ${c.description.split(/[.;]/)[0].slice(0, 60)}` : ""}`, detail: reason }],
       };
     }
 
@@ -507,7 +507,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           reverted = true;
           decisions = [
             {
-              title: `Kept the ${bandLabel(prev.band.used)} results`,
+              title: `Kept the first shortlist: a re-search added only ${added.length} new act${added.length === 1 ? "" : "s"}`,
               detail: `Re-querying ${bandLabel(used)} added only ${added.length} new act${added.length === 1 ? "" : "s"} to the shortlist, so the earlier results stand.`,
             },
           ];
@@ -515,7 +515,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
           const why = typeof args.reason === "string" && args.reason.trim() ? String(args.reason).slice(0, 400) : "Band changed by the planner.";
           decisions = [
             {
-              title: `Popularity band ${bandLabel(prev.band.used)} -> ${bandLabel(used)}`,
+              title: used.max < prev.band.used.max ? "Searched smaller acts to fit the room better" : "Widened the search to find more acts that fit",
               detail: `${why} Result: ${added.length} new acts (${added.slice(0, 4).map((p) => p.name).join(", ")})${dropped.length ? `, dropped ${dropped.slice(0, 4).map((p) => p.name).join(", ")}` : ""}. Top 3 before: ${top3(prev.picks)}; after: ${top3(picks)}.`,
             },
           ];
@@ -656,6 +656,7 @@ export async function runTool(name: string, args: Args, ws: Workspace): Promise<
         sponsorAngle: String(args.sponsor_angle ?? "").slice(0, 600) || t.sponsorAngle,
         author: args.__template ? "template" : "llm",
       };
+      if (draft.author === "llm") Object.assign(draft, tidyPitch(draft, ws));
       const problems = draft.author === "llm" ? pitchProblems(draft, ws) : [];
       if (problems.length) {
         ws.pitch = { ...t, checkNote: `The LLM's pitch was replaced by the template because it made claims the Qloo data does not support: ${problems.join("; ")}.` };
@@ -703,7 +704,7 @@ const OUTCOME_CLAIM =
 // Claims that the crowd is concentrated around the venue.
 const LOCAL_CLAIM =
   /\b(?:strong|high|deep|dense|concentrated|robust|significant)\s+(?:local|neighbou?rhood|nearby)\b|\blocal\s+(?:audience\s+)?(?:affinity|demand|fan\s?base|following|taste)\s+(?:is\s+)?(?:strong|high|concentrated)|\bconcentrated (?:near|around)\b|\bon (?:your|the venue's) doorstep\b/i;
-const IN_TIER_CLAIM = /\bfits? the room\b|\bin (?:this|the) room's tier\b|\bin[- ]tier\b|\bright[- ]sized\b/i;
+const IN_TIER_CLAIM = /\bfits? the room\b|\bin (?:this|the) room's tier\b|\bin[- ]tier\b|\bright[- ]sized\b|\bright size\b|\bsized for the room\b/i;
 
 /** Claims in an LLM pitch that the workspace data does not support (empty = passes). */
 export function pitchProblems(p: Pitch, ws: Workspace): string[] {
@@ -720,6 +721,57 @@ export function pitchProblems(p: Pitch, ws: Workspace): string[] {
     if (act && act.drawFit !== "fits" && IN_TIER_CLAIM.test(r.why)) out.push(`calls ${act.name} a fit for the room, but it is ${FIT_WORDS[act.drawFit ?? "unknown"]}`);
   }
   return out;
+}
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const RAW_NUM = String.raw`(?:0?\.\d+|\d{1,3}/100)`;
+const toPct = (n: string) => (n.includes("/") ? `${parseInt(n, 10)}%` : `${Math.round(parseFloat(n) * 100)}%`);
+
+/**
+ * Takes raw Qloo scores out of pitch prose: "(0.348)" after a past headliner becomes
+ * "(35%)" (its share of the pull), other bracketed scores and "affinity 0.97" style
+ * numbers are dropped, and any leftover 0.xx decimal is written as a percent.
+ */
+export function scrubNumbers(text: string, seedNames: string[]): string {
+  const seeds = seedNames.map((n) => n.toLowerCase());
+  const bracketed = new RegExp(String.raw`\s*\(\s*(?:[A-Za-z][A-Za-z ]*:?\s*)?(${RAW_NUM})\s*\)`, "g");
+  return text
+    .replace(bracketed, (_m: string, n: string, at: number, all: string) => {
+      const before = all.slice(0, at).toLowerCase().trimEnd();
+      return seeds.some((s) => before.endsWith(s)) ? ` (${toPct(n)})` : "";
+    })
+    .replace(new RegExp(String.raw`\b(affinity|popularity|score)(?:\s+(?:of|at|is|score of))?:?\s+${RAW_NUM}(?![\d.])`, "gi"), "$1")
+    .replace(new RegExp(String.raw`(?<![\w.])${RAW_NUM}\s+(affinity|popularity|score)\b`, "gi"), "$1")
+    .replace(/(?<![\w.])0?\.\d{2,}(?!\d)/g, (n) => toPct(n))
+    .replace(/\ba (affinity)\b/gi, "an $1")
+    .replace(/ {2,}/g, " ")
+    .replace(/ +([,.;:])/g, "$1");
+}
+
+/**
+ * Fixes an LLM pitch in place of rejecting it: act and headliner names in Qloo's
+ * canonical spelling ("sasami" -> "SASAMI"), custom venues (placed at the city
+ * centre, no street address) never described as "near the venue", and raw score
+ * decimals rewritten in words or percents (scrubNumbers).
+ */
+export function tidyPitch(p: Pitch, ws: Workspace): Pick<Pitch, "headline" | "summary" | "sponsorAngle" | "pickRationales"> {
+  const names = [...ws.picks.map((x) => x.name), ...ws.seeds.map((s) => s.name)].filter((n) => n.length > 2).sort((a, b) => b.length - a.length);
+  const fix = (s: string) => {
+    let out = s;
+    for (const n of names) out = out.replace(new RegExp(`(?<![\\w])${escapeRe(n)}(?![\\w])`, "gi"), n);
+    if (ws.venue.custom) out = out.replace(/\b(near|around|close to|by|next to) (?:the|your) venue\b/gi, "$1 the city centre");
+    return scrubNumbers(out, ws.seeds.map((x) => x.name));
+  };
+  return {
+    headline: fix(p.headline),
+    summary: fix(p.summary),
+    sponsorAngle: fix(p.sponsorAngle),
+    pickRationales: p.pickRationales.map((r) => {
+      const act = ws.picks.find((x) => norm(x.name) === norm(r.artist));
+      return { artist: act?.name ?? r.artist, why: fix(r.why) };
+    }),
+  };
 }
 
 // Partner spots: keep places a music crowd would go before or after a show. Matched
@@ -786,6 +838,15 @@ export function topBucket(age: Record<string, number>): string {
 // Same wording as the UI verdict chips (lib/ui.ts VERDICT).
 const FIT_WORDS = { fits: "in this room's tier", stretch: "stretch pick", under: "below this room's tier", unknown: "tier unknown" } as const;
 
+// Plain-English room fit for pitch text (the raw popularity stays in the UI tooltip and the .md table).
+const SIZE_WORDS = { fits: "the right size for this room", stretch: "a stretch pick (bigger than this room's usual draw)", under: "smaller than this room's usual draw" } as const;
+
+/** "#1 taste match of 10": rank by Qloo affinity among all candidates. */
+export function tasteRankText(p: ArtistPick, all: ArtistPick[]): string {
+  const rank = [...all].sort((a, b) => b.affinity - a.affinity).findIndex((x) => x.entityId === p.entityId) + 1;
+  return rank > 0 ? `#${rank} taste match of ${all.length}` : "a strong taste match";
+}
+
 /** Deterministic pitch built only from Workspace facts (used by the scripted planner and as a fallback). */
 export function templatePitch(ws: Workspace): Pitch {
   const top3 = bookableFirst(ws.picks).slice(0, 3);
@@ -795,7 +856,7 @@ export function templatePitch(ws: Workspace): Pitch {
   const demo = ws.demographics.find((d) => d.entityId === a?.entityId) ?? ws.demographics[0];
   const cityShort = ws.venue.city.split(",")[0];
   return {
-    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest ${a?.drawFit === "fits" ? "in-tier " : ""}taste match for your next ${cityShort} headline night`,
+    headline: `${ws.venue.name}: ${a?.name ?? "The top pick"} is the strongest taste match${a?.drawFit === "fits" ? ", sized for the room," : ""} for your next ${cityShort} headline night`,
     summary:
       `Fans of ${ws.seeds.map((s) => s.name).join(", ")} show the highest Qloo affinity for ${top3.map((p) => p.name).join(", ")}` +
       (ws.band ? `, each checked against the ${bandLabel(ws.band.target)} popularity tier for a ${ws.venue.capacity}-capacity room (a heuristic for draw, not a ticket forecast). ` : ". ") +
@@ -813,7 +874,7 @@ export function templatePitch(ws: Workspace): Pitch {
     pickRationales: top3.map((p) => ({
       artist: p.name,
       why:
-        `Affinity ${pct(p.affinity)}/100${p.popularity !== undefined ? `, popularity ${pct(p.popularity)}/100 (${FIT_WORDS[p.drawFit ?? "unknown"]})` : ""}. ` +
+        `${tasteRankText(p, ws.picks)}${p.drawFit && p.drawFit !== "unknown" ? `, ${SIZE_WORDS[p.drawFit]}` : ""}. ` +
         (p.sharedTags.length ? `Shares ${p.sharedTags.slice(0, 3).join(", ")} with the venue's taste profile.` : "Adjacent to the venue's taste profile.") +
         (p.drivenBy?.length ? ` Driven by ${driverText(p.drivenBy)} (Qloo explainability).` : ""),
     })),

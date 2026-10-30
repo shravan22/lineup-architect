@@ -133,6 +133,23 @@ strong { color: var(--ink); }
 .agent-now { margin: 0.35rem 0 0; font-size: 0.88rem; color: var(--ink); display: flex; gap: 0.4rem; align-items: center; }
 .progbar { height: 3px; border-radius: 999px; background: var(--line); margin-top: 0.4rem; overflow: hidden; max-width: 480px; }
 .progbar span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
+/* Agent plan: previewed before a run, ticked off live during it */
+.plan-preview { margin-top: 1rem; max-width: 640px; }
+.plan-rows { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.2rem; font-size: 0.88rem; }
+.plan-row { display: grid; grid-template-columns: 1.4rem 1fr auto; align-items: baseline; gap: 0.5rem; color: var(--muted); }
+.plan-row .row-icon { font-size: 0.75rem; color: var(--faint); text-align: center; font-variant-numeric: tabular-nums; }
+.plan-row .row-text { min-width: 0; }
+.plan-row .row-detail { display: block; font-size: 0.76rem; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-row .row-note { color: var(--faint); font-size: 0.78rem; }
+.plan-rows.is-live .row-ok { color: var(--ink); }
+.plan-rows.is-live .row-ok .row-icon { color: var(--ok); }
+.plan-rows.is-live .row-running { color: var(--ink); }
+.plan-rows.is-live .row-error .row-icon { color: var(--err); }
+.plan-rows.is-live .row-skipped { opacity: 0.55; }
+.endpoint-chip { font-size: 0.68rem; letter-spacing: 0.04em; padding: 0.05rem 0.45rem; border: 1px solid var(--line-2); border-radius: 999px; color: var(--faint); white-space: nowrap; }
+.agent .plan-rows { margin-top: 0.6rem; max-width: 720px; }
+.verdict-line { font-size: 1.02rem; line-height: 1.45; color: var(--ink); margin: 0 0 0.35rem; }
+.support-reason { font-size: 0.84rem; color: var(--muted); margin: 0.1rem 0 0.35rem; }
 .agent-decisions { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; gap: 0.15rem; font-size: 0.88rem; }
 .agent-decisions li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .agent-decisions li::before { content: "\25C6  "; color: var(--accent); font-size: 0.7rem; vertical-align: 1px; }

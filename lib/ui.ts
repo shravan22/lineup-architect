@@ -1,6 +1,6 @@
 // Plain-language helpers for the UI. Everything here is derived from data the
 // agent already returned; nothing predicts ticket sales or attendance.
-import type { DrawFit, HeatPoint, VenueInput } from "./types";
+import type { ArtistPick, DrawFit, HeatPoint, VenueInput, Workspace } from "./types";
 
 /** Named room tiers. Capacity cut-offs mirror the band table in lib/band.ts. */
 const TIERS: { maxCap: number; name: string; range: string }[] = [
@@ -25,11 +25,44 @@ export function tasteWord(a: number): string {
 
 /** Verdict chip text for the draw-fit check (Qloo popularity vs the room's band). */
 export const VERDICT: Record<DrawFit, string> = {
-  fits: "In this room's tier",
+  fits: "Right size for the room",
   stretch: "Stretch pick",
-  under: "Below this room's tier",
-  unknown: "Tier unknown",
+  under: "Smaller than the room",
+  unknown: "Size unknown",
 };
+
+/** 1-based rank by Qloo affinity among all candidates ("#2 of 10"). */
+export function tasteRank(p: ArtistPick, all: ArtistPick[]): number {
+  return [...all].sort((a, b) => b.affinity - a.affinity).findIndex((x) => x.entityId === p.entityId) + 1;
+}
+
+const listNames = (n: string[]) => (n.length < 2 ? n.join("") : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`);
+
+/** One plain-English sentence above the lineup: who to book and why. */
+export function verdictLine(ws: Workspace): string | undefined {
+  const h = ws.picks[0];
+  if (!h) return undefined;
+  const fans = h.drivenBy?.length ? h.drivenBy.slice(0, 2).map((d) => d.name) : ws.seeds.slice(0, 2).map((s) => s.name);
+  const rank = tasteRank(h, ws.picks);
+  const why = `${rank === 1 ? "the strongest" : `the #${rank}`} taste match with fans of ${listNames(fans)}`;
+  const size =
+    h.drawFit === "fits"
+      ? `and the right size for ${ws.venue.capacity} cap`
+      : h.drawFit === "stretch"
+        ? `though bigger than a ${ws.venue.capacity}-cap room usually books`
+        : h.drawFit === "under"
+          ? `and smaller than a ${ws.venue.capacity}-cap room usually books`
+          : "";
+  return `Book ${h.name} to headline: ${why}${size ? `, ${size}` : ""}.`;
+}
+
+/** One visible line per support act: its top driver, else its shared sound. */
+export function supportReason(p: ArtistPick, all: ArtistPick[]): string {
+  const rank = `#${tasteRank(p, all)} taste match`;
+  if (p.drivenBy?.length) return `${rank}, pulled in mostly by ${p.drivenBy[0].name} fans`;
+  if (p.sharedTags.length) return `${rank}, shares your room's ${p.sharedTags.slice(0, 2).join(" and ").toLowerCase()} sound`;
+  return rank;
+}
 
 const HOT_KM = 2;
 
@@ -50,6 +83,8 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number) {
  * all cells. Undefined when the venue position is unknown or there are too few cells.
  */
 export function concentration(venue: VenueInput, points: HeatPoint[]) {
+  // Custom venues are placed at the city centre (no street address).
+  const where = venue.custom ? "the city centre" : "the venue";
   if (venue.needsGeocode || points.length < 5) return undefined;
   const near = (p: HeatPoint) => km(venue.lat, venue.lng, p.lat, p.lng) <= HOT_KM;
   const hot = [...points].sort((a, b) => b.affinity - a.affinity).slice(0, Math.ceil(points.length / 5));
@@ -59,12 +94,12 @@ export function concentration(venue: VenueInput, points: HeatPoint[]) {
   const ratio = allPct > 0 ? hotPct / allPct : undefined;
   const verdict =
     ratio === undefined
-      ? "Few map areas sit near the venue, so no comparison"
+      ? `Few map areas sit near ${where}, so no comparison`
       : ratio > NEAR_LIFT_MIN
-        ? `Concentrated near the venue: ${ratio.toFixed(1)}x the city-wide share`
+        ? `Concentrated near ${where}: ${ratio.toFixed(1)}x the city-wide share`
         : ratio <= 0.77
-          ? "Concentrated away from the venue"
-          : "Spread across the city, not just near the venue";
+          ? `Concentrated away from ${where}`
+          : `Spread across the city, not just near ${where}`;
   return { hotPct, allPct, ratio, verdict, km: HOT_KM };
 }
 
