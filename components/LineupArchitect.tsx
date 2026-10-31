@@ -733,6 +733,10 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 </p>
               )}
 
+              <p className="skipped-note">
+                Not covered: artist fees, availability, routing and your ticket history. Check those with the act&apos;s agent before making an offer.
+              </p>
+
               <details className="more">
                 <summary>
                   Your room&apos;s sound and how to read the scores
@@ -893,6 +897,7 @@ export default function LineupArchitect({ status, venues }: { status: StatusInfo
                 </tbody>
               </table>
             </div>
+            <WithoutQloo ws={ws} />
           </section>
         )}
 
@@ -1113,4 +1118,66 @@ function mapAction(verdict: string): string {
   if (verdict.startsWith("Concentrated away")) return "Promote where the taste is, not just around the venue.";
   if (verdict.startsWith("Spread")) return "Promote city-wide.";
   return "";
+}
+
+type Baseline = { acts: string[]; reason: string } | { error: string };
+
+/** The same booking question put to Claude with no Qloo data, next to what Qloo found. Fetched only when opened. */
+function WithoutQloo({ ws }: { ws: Workspace }) {
+  const [res, setRes] = useState<Baseline | "loading" | null>(null);
+  const load = async () => {
+    if (res && res !== "loading" && !("error" in res)) return;
+    setRes("loading");
+    try {
+      const r = await fetch("/api/baseline", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: ws.venue.name, city: ws.venue.city, capacity: ws.venue.capacity, headliners: ws.seeds.map((x) => x.name) }),
+      });
+      setRes((await r.json()) as Baseline);
+    } catch {
+      setRes({ error: "Request failed. Try again." });
+    }
+  };
+  const norm = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return (
+    <details className="baseline" onToggle={(e) => e.currentTarget.open && load()}>
+      <summary>Without Qloo: what the same AI suggests on its own</summary>
+      {res === "loading" && (
+        <p className="faint">
+          <span className="spinner" aria-hidden="true" /> Asking Claude with no Qloo data...
+        </p>
+      )}
+      {res && res !== "loading" && "error" in res && (
+        <p className="faint">
+          {res.error}{" "}
+          <button className="linkish" onClick={load}>
+            Retry
+          </button>
+        </p>
+      )}
+      {res && res !== "loading" && "acts" in res && (
+        <>
+          <ul className="baseline-list">
+            {res.acts.map((name, i) => {
+              const hit = ws.picks.find((p) => norm(p.name) === norm(name));
+              return (
+                <li key={name}>
+                  <span className="slot-mini">{SLOTS[i]}</span> <strong>{name}</strong>{" "}
+                  <span className="faint">
+                    {hit ? `in Qloo's list for this crowd (#${tasteRank(hit, ws.picks)}, ${VERDICT[hit.drawFit ?? "unknown"].toLowerCase()})` : "not in Qloo's list for this crowd"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {res.reason && <p className="faint">&ldquo;{res.reason}&rdquo;</p>}
+          <p className="baseline-note">
+            On its own the model can&apos;t check how widely known an act is against a {ws.venue.capacity}-cap room, which of your past headliners&apos;
+            fans overlap with it, or where that taste sits in {ws.venue.city}. Qloo supplies all three.
+          </p>
+        </>
+      )}
+    </details>
+  );
 }

@@ -767,6 +767,8 @@ export function tidyPitch(p: Pitch, ws: Workspace): Pick<Pitch, "headline" | "su
       /^The\b/.test(m) ? "A top taste match" : "a top taste match",
     );
     return out
+      // Taste is correlation, not a forecast: "will draw" becomes "could draw" (hard promises still fail pitchProblems).
+      .replace(/\b(w)ill (draw|fill|pack)\b/gi, (_m, w: string, v: string) => `${w === "W" ? "C" : "c"}ould ${v}`)
       .replace(/\s*\b[a-z]+_[a-z_]+\b(?:\s+score)?/g, "")
       .replace(/\s+\)/g, ")")
       .replace(/\s*\((?:affinity|popularity)\)/gi, "")

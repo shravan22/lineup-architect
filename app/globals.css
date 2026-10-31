@@ -370,3 +370,8 @@ strong { color: var(--ink); }
 .run.run-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line-2); font-weight: 700; padding: 0.6rem 1.1rem; font-size: 0.92rem; }
 .run.run-secondary:hover:not(:disabled) { border-color: var(--accent); }
 #results-compare { scroll-margin-top: 3.2rem; }
+.baseline { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 0.7rem; font-size: 0.9rem; }
+.baseline summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+.baseline-list { list-style: none; padding: 0; margin: 0.6rem 0 0.4rem; display: grid; gap: 0.3rem; }
+.slot-mini { display: inline-block; min-width: 5.5rem; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.baseline-note { font-size: 0.86rem; color: var(--ink); margin: 0.4rem 0 0; }
