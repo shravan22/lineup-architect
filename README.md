@@ -67,7 +67,7 @@ Planner (`lib/agent/llm.ts` `selectProviders`, a fallback chain):
 
 | Keys set | Chain |
 |---|---|
-| `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` | Claude (`claude-haiku-4-5-20251001`, Anthropic tool use), then Gemini (`gemini-3.5-flash-lite`, `@google/genai` function calling), then the scripted planner |
+| `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` | Claude (`claude-sonnet-5-5`, Anthropic tool use), then Gemini (`gemini-3.5-flash-lite`, `@google/genai` function calling), then the scripted planner |
 | one of them | That provider, then the scripted planner |
 | neither, or `LLM_PROVIDER=scripted` | Rule-based scripted planner: the same tools and branch logic (disambiguate, cap or widen the band), deterministic, labelled "rule-based" |
 

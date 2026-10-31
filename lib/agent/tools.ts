@@ -706,14 +706,24 @@ const LOCAL_CLAIM =
   /\b(?:strong|high|deep|dense|concentrated|robust|significant)\s+(?:local|neighbou?rhood|nearby)\b|\blocal\s+(?:audience\s+)?(?:affinity|demand|fan\s?base|following|taste)\s+(?:is\s+)?(?:strong|high|concentrated)|\bconcentrated (?:near|around)\b|\bon (?:your|the venue's) doorstep\b/i;
 const IN_TIER_CLAIM = /\bfits? the room\b|\bin (?:this|the) room's tier\b|\bin[- ]tier\b|\bright[- ]sized\b|\bright size\b|\bsized for the room\b/i;
 
+/**
+ * First un-negated match: "spread across the city rather than concentrated near the venue" or
+ * "not a forecast of ticket sales" is the honest reading, not a claim.
+ */
+function firstClaim(text: string, re: RegExp): RegExpExecArray | undefined {
+  return [...text.matchAll(new RegExp(re.source, "gi"))].find(
+    (m) => !/\b(?:not|no|rather than|instead of|isn't|is not|aren't|without|than)\s+(?:\w+\s+){0,3}$/i.test(text.slice(Math.max(0, m.index - 40), m.index)),
+  );
+}
+
 /** Claims in an LLM pitch that the workspace data does not support (empty = passes). */
 export function pitchProblems(p: Pitch, ws: Workspace): string[] {
   const all = [p.headline, p.summary, p.sponsorAngle, ...p.pickRationales.map((r) => r.why)].join(" \n ");
   const out: string[] = [];
-  const outcome = all.match(OUTCOME_CLAIM);
+  const outcome = firstClaim(all, OUTCOME_CLAIM);
   if (outcome) out.push(`promises an outcome ("${outcome[0]}")`);
   const hs = hotspots(ws);
-  const local = all.match(LOCAL_CLAIM);
+  const local = firstClaim(all, LOCAL_CLAIM);
   if (local && !hs?.concentrated)
     out.push(`claims local concentration ("${local[0]}") but the heatmap lift is ${hs?.lift !== undefined ? `${hs.lift.toFixed(2)}x` : "unknown"} (needs > ${NEAR_LIFT_MIN})`);
   for (const r of p.pickRationales) {

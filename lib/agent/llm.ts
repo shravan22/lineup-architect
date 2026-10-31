@@ -41,7 +41,7 @@ export interface LlmProvider {
   next(system: string, messages: Msg[], tools: ToolSpec[], signal: AbortSignal): Promise<LlmTurn>;
 }
 
-export const DEFAULT_CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+export const DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5";
 // Free-tier model (https://ai.google.dev/gemini-api/docs/pricing, checked 2026-10-08).
 // Measured live 2026-10-08 on the Detroit preset: gemini-3.8-flash took 20-29 s on its
 // first call and missed the budget twice; gemini-3.5-flash-lite finished in 9 s
